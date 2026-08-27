@@ -2,35 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>خريطة صور الـ GPS - محمية</title>
+    <title>خريطة صور الـ GPS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; width: 100%; background: #111; font-family: Tahoma, sans-serif; }
 
-        /* شاشة حماية كلمة المرور */
-        #auth-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #111; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 9999; color: white;
-        }
-        .auth-box {
-            background: #222; padding: 30px; border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8); text-align: center; width: 300px;
-        }
-        .auth-box input {
-            width: 80%; padding: 10px; margin-top: 15px; border-radius: 6px;
-            border: 1px solid #444; background: #333; color: white; text-align: center; font-size: 16px;
-        }
-        .auth-box button {
-            margin-top: 15px; padding: 10px 20px; background: #007bff; color: white;
-            border: none; border-radius: 6px; cursor: pointer; font-size: 16px;
-        }
-        .auth-box button:hover { background: #0056b3; }
-        .error-msg { color: #ff4d4d; margin-top: 10px; font-size: 14px; display: none; }
-
-        #map { height: 100vh; width: 100vw; display: none; }
+        #map { height: 100vh; width: 100vw; }
 
         #topbar {
             position: fixed; top: 12px; right: 12px; z-index: 999;
@@ -82,18 +61,6 @@
 </head>
 <body>
 
-    <!-- شاشة إدخال كلمة المرور -->
-    <div id="auth-screen">
-        <div class="auth-box">
-            <h3>🔒 خريطة محمية</h3>
-            <p>الرجاء إدخال كلمة المرور للمتابعة</p>
-            <input type="password" id="passwordInput" placeholder="كلمة المرور">
-            <br>
-            <button onclick="checkPassword()">دخول</button>
-            <div id="errorMsg" class="error-msg">كلمة المرور غير صحيحة!</div>
-        </div>
-    </div>
-
     <!-- الخريطة -->
     <div id="map"></div>
 
@@ -111,35 +78,7 @@
 
     <script src="js/leaflet.js"></script>
     <script>
-        // كلمة المرور تُقرأ من ملف خارجي password.json وليس من هنا
-        let CORRECT_PASSWORD = null;
-
-        // تحميل كلمة المرور من الملف الخارجي عند فتح الصفحة
-        fetch('password.json')
-            .then(r => r.json())
-            .then(d => { CORRECT_PASSWORD = d.password; })
-            .catch(e => console.error('تعذّر تحميل كلمة المرور: ', e));
-
-        function checkPassword() {
-            const userPass = document.getElementById('passwordInput').value;
-            if (CORRECT_PASSWORD !== null && userPass === CORRECT_PASSWORD) {
-                document.getElementById('auth-screen').style.display = 'none';
-                document.getElementById('map').style.display = 'block';
-                initMap(); // تشغيل الخريطة بعد تجاوز كلمة المرور بنجاح
-            } else {
-                document.getElementById('errorMsg').style.display = 'block';
-            }
-        }
-
-        // دعم الضغط على زر Enter داخل حقل كلمة المرور
-        document.getElementById('passwordInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                checkPassword();
-            }
-        });
-
-        function initMap() {
-            const map = L.map('map', { attributionControl: false }).setView([23.5880, 58.3829], 10);
+        const map = L.map('map', { attributionControl: false }).setView([23.5880, 58.3829], 10);
 
             const satelliteEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
             const satelliteGoogle = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'] });
@@ -194,7 +133,6 @@
                     console.error('خطأ في تحميل البيانات:', error);
                     document.getElementById('info').textContent = 'خطأ في تحميل البيانات';
                 });
-        }
 
         function openModal(src, lat, lng) {
             document.getElementById('modalImg').src = src;
