@@ -1,0 +1,2 @@
+# Prevent line-ending conversion for bundled exiftool (Perl modules must stay LF)
+tools/exiftool/** -text
