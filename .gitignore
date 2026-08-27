@@ -8,7 +8,3 @@ server_out.txt
 # Python
 __pycache__/
 *.pyc
-
-# Source videos (HEVC from phone - not web compatible). Convert to .mp4 instead.
-uploads/*.MOV
-uploads/*.mov
