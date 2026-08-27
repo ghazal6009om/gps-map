@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>خريطة الصور الجغرافية</title>
+    <link rel="stylesheet" href="css/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; background: #111; font-family: Tahoma, sans-serif; }
+        #map { height: 100%; width: 100%; }
+
+        #uploadBtn {
+            position: fixed; bottom: 20px; right: 20px; z-index: 999;
+            width: 56px; height: 56px; border-radius: 50%;
+            background: #007bff; color: white; border: none;
+            font-size: 28px; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s, background 0.2s;
+        }
+        #uploadBtn:hover { background: #0056b3; transform: scale(1.1); }
+
+        #toggleMap {
+            position: fixed; top: 10px; right: 10px; z-index: 999;
+            width: 42px; height: 42px; border-radius: 8px;
+            background: rgba(255,255,255,0.9); border: none;
+            font-size: 20px; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        #toggleMap:hover { transform: scale(1.1); }
+
+        #logoutBtn {
+            position: fixed; top: 10px; left: 10px; z-index: 999;
+            padding: 8px 16px; border-radius: 8px;
+            background: rgba(220,53,69,0.9); color: white; border: none;
+            font-size: 13px; cursor: pointer; font-family: Tahoma, sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+        #logoutBtn:hover { background: #c82333; }
+
+        #usernameBadge {
+            position: fixed; top: 10px; left: 110px; z-index: 999;
+            padding: 8px 14px; border-radius: 8px;
+            background: rgba(0,0,0,0.6); color: white; border: none;
+            font-size: 13px; font-family: Tahoma, sans-serif;
+            pointer-events: none;
+        }
+
+        #fileInput { display: none; }
+
+        #status {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 999; background: rgba(0,0,0,0.75); color: white;
+            padding: 8px 18px; border-radius: 20px; font-size: 13px;
+            pointer-events: none; opacity: 0; transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        #status.show { opacity: 1; }
+
+        .photo-marker {
+            background: white; border: 3px solid white; border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5); overflow: hidden;
+            width: 50px; height: 50px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; transition: transform 0.2s;
+        }
+        .photo-marker:hover { transform: scale(1.2); z-index: 1000; }
+        .photo-marker img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-marker::after {
+            content: ''; position: absolute; bottom: -8px; left: 50%;
+            transform: translateX(-50%); border-width: 6px 6px 0;
+            border-style: solid; border-color: white transparent;
+            width: 0; display: block;
+        }
+
+        .leaflet-popup-content-wrapper { border-radius: 10px; }
+        .leaflet-popup-content { margin: 8px; text-align: center; }
+        .popup-img { max-width: 250px; max-height: 250px; border-radius: 6px; }
+        .popup-info { font-size: 12px; color: #555; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<input type="file" id="fileInput" accept="image/*,.heic,.HEIC,.heif,.HEIF" multiple>
+<button id="toggleMap" title="تبديل نوع الخريطة">🛰</button>
+<div id="usernameBadge"></div>
+<button id="logoutBtn">خروج</button>
+<button id="uploadBtn" title="ارفع صورة">+</button>
+<div id="status"></div>
+
+<script src="js/leaflet.js"></script>
+<script src="js/exif.js"></script>
+<script>
+    var map = L.map('map', { attributionControl: false }).setView([24.7136, 46.6753], 5);
+
+    var satelliteOld = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19
+    });
+
+    var satelliteNew = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+
+    var currentLayer = satelliteNew;
+    currentLayer.addTo(map);
+
+    var isHybrid = true;
+
+    document.getElementById('toggleMap').addEventListener('click', function() {
+        map.removeLayer(currentLayer);
+        if (isHybrid) {
+            currentLayer = satelliteOld;
+            this.textContent = '🗺';
+            this.title = 'خريطة أقمار ص庸ية مع أسماء';
+        } else {
+            currentLayer = satelliteNew;
+            this.textContent = '🛰';
+            this.title = 'خريطة أقمار ص庸ية فقط';
+        }
+        currentLayer.addTo(map);
+        isHybrid = !isHybrid;
+    });
+
+    var allMarkers = [];
+    var statusTimer;
+
+    function showStatus(msg, duration) {
+        var el = document.getElementById('status');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(function() { el.classList.remove('show'); }, duration || 3000);
+    }
+
+    function createPhotoIcon(imgUrl) {
+        return L.divIcon({
+            className: '',
+            html: '<div class="photo-marker"><img src="' + imgUrl + '" alt=""></div>',
+            iconSize: [50, 60],
+            iconAnchor: [25, 60],
+            popupAnchor: [0, -55]
+        });
+    }
+
+    function addPhotoToMap(imgUrl, lat, lng) {
+        var marker = L.marker([lat, lng], { icon: createPhotoIcon(imgUrl) }).addTo(map);
+        marker.bindPopup(
+            '<img class="popup-img" src="' + imgUrl + '" alt="">' +
+            '<div class="popup-info">خط العرض: ' + lat.toFixed(6) + '<br>خط الطول: ' + lng.toFixed(6) + '</div>'
+        );
+        allMarkers.push(marker);
+        return marker;
+    }
+
+    function fitAllMarkers() {
+        if (allMarkers.length === 0) return;
+        if (allMarkers.length === 1) {
+            map.setView(allMarkers[0].getLatLng(), 16);
+        } else {
+            var group = L.featureGroup(allMarkers);
+            map.fitBounds(group.getBounds().pad(0.2));
+        }
+    }
+
+    function fileToBase64(file) {
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function() { resolve(reader.result.split(',')[1]); };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function handleFile(file) {
+        var name = file.name.toLowerCase();
+        var isHEIC = name.endsWith('.heic') || name.endsWith('.heif') ||
+                     file.type === 'image/heic' || file.type === 'image/heif';
+
+        if (isHEIC) {
+            return fileToBase64(file).then(function(b64) {
+                return fetch('/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file: b64, name: file.name })
+                }).then(function(r) { return r.json(); }).then(function(data) {
+                    if (!data.ok) throw new Error(data.error);
+                    return { imgUrl: 'data:image/jpeg;base64,' + data.jpg, gps: data.gps };
+                });
+            });
+        } else {
+            return new Promise(function(resolve) {
+                EXIF.getData(file, function() {
+                    var lat = EXIF.getTag(this, 'GPSLatitude');
+                    var latRef = EXIF.getTag(this, 'GPSLatitudeRef');
+                    var lon = EXIF.getTag(this, 'GPSLongitude');
+                    var lonRef = EXIF.getTag(this, 'GPSLongitudeRef');
+                    var gps = {};
+                    if (lat && lon) {
+                        gps.lat = convertDMSToDD(lat[0], lat[1], lat[2], latRef);
+                        gps.lng = convertDMSToDD(lon[0], lon[1], lon[2], lonRef);
+                    }
+                    var reader = new FileReader();
+                    reader.onload = function() {
+                        resolve({ imgUrl: reader.result, gps: gps });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+    }
+
+    function convertDMSToDD(d, m, s, ref) {
+        var dd = d + m / 60 + s / 3600;
+        if (ref === 'S' || ref === 'W') dd = -dd;
+        return Math.round(dd * 1000000) / 1000000;
+    }
+
+    document.getElementById('uploadBtn').addEventListener('click', function() {
+        document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        var files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        showStatus('جاري تحليل ' + files.length + ' صورة...', 10000);
+
+        var done = 0;
+        var withGPS = 0;
+
+        files.forEach(function(file) {
+            handleFile(file).then(function(result) {
+                done++;
+                if (result.gps && result.gps.lat && result.gps.lng) {
+                    withGPS++;
+                    var m = addPhotoToMap(result.imgUrl, result.gps.lat, result.gps.lng);
+                    if (done === files.length) {
+                        fitAllMarkers();
+                        showStatus('تم رفع ' + done + ' صورة (' + withGPS + ' بها موقع)', 3000);
+                    }
+                } else {
+                    showStatus(file.name + ': بدون بيانات GPS', 3000);
+                }
+            }).catch(function(err) {
+                done++;
+                showStatus('خطأ: ' + err.message, 3000);
+            });
+        });
+
+        e.target.value = '';
+    });
+
+    // Check login
+    fetch('/me').then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            document.getElementById('usernameBadge').textContent = d.username;
+            loadSavedPhotos();
+        } else {
+            window.location.href = '/login.html';
+        }
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        fetch('/logout', { method: 'POST' }).then(function() {
+            window.location.href = '/login.html';
+        });
+    });
+
+    // Load saved photos
+    function loadSavedPhotos() {
+        fetch('/my-photos').then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok && d.photos.length > 0) {
+                d.photos.forEach(function(p) {
+                    addPhotoToMap(p.url, p.lat, p.lng);
+                });
+                fitAllMarkers();
+                showStatus(d.photos.length + ' صورة محفوظة', 3000);
+            }
+        });
+    }
+</script>
+</body>
+</html>

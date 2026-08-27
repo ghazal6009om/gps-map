@@ -1,9 +1,6 @@
 # Database
 gps_app.db
 
-# Uploads
-uploads/
-
 # Server logs
 server_err.txt
 server_out.txt
