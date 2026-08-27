@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: Tahoma, sans-serif;
+        }
+        .card {
+            background: white; border-radius: 16px; padding: 36px 32px;
+            width: 380px; max-width: 92vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .card h2 { text-align: center; color: #222; margin-bottom: 6px; font-size: 22px; }
+        .card .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 28px; }
+        .tabs { display: flex; margin-bottom: 24px; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+        .tab {
+            flex: 1; padding: 10px; text-align: center; cursor: pointer;
+            font-size: 14px; font-weight: bold; transition: all 0.2s;
+            background: #f5f5f5; color: #666; border: none;
+        }
+        .tab.active { background: #007bff; color: white; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+        .form-group input {
+            width: 100%; padding: 12px 14px; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 15px; outline: none; transition: border 0.2s;
+            font-family: Tahoma, sans-serif;
+        }
+        .form-group input:focus { border-color: #007bff; }
+        .btn {
+            width: 100%; padding: 13px; border: none; border-radius: 8px;
+            font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px;
+            color: white; background: #007bff; transition: background 0.2s;
+            font-family: Tahoma, sans-serif;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #aaa; cursor: not-allowed; }
+        .error { color: #dc3545; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+        .success { color: #28a745; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>خريطة الصور الجغرافية</h2>
+    <p class="subtitle">سجّل دخولك لعرض صورك على الخريطة</p>
+
+    <div class="tabs">
+        <button class="tab active" id="tabLogin" onclick="showTab('login')">تسجيل الدخول</button>
+        <button class="tab" id="tabRegister" onclick="showTab('register')">حساب جديد</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" onsubmit="doLogin(event)">
+        <div class="form-group">
+            <label>اسم المستخدم</label>
+            <input type="text" id="loginUser" required autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>كلمة المرور</label>
+            <input type="password" id="loginPass" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn" id="loginBtn">دخول</button>
+        <div class="error" id="loginError"></div>
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" style="display:none" onsubmit="doRegister(event)">
+        <div class="form-group">
+            <label>اسم المستخدم</label>
+            <input type="text" id="regUser" required autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>كلمة المرور</label>
+            <input type="password" id="regPass" required minlength="4" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label>تأكيد كلمة المرور</label>
+            <input type="password" id="regPass2" required minlength="4" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn" id="regBtn">إنشاء حساب</button>
+        <div class="error" id="regError"></div>
+        <div class="success" id="regSuccess"></div>
+    </form>
+</div>
+
+<script>
+    function showTab(tab) {
+        document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+        document.getElementById('tabLogin').className = 'tab' + (tab === 'login' ? ' active' : '');
+        document.getElementById('tabRegister').className = 'tab' + (tab === 'register' ? ' active' : '');
+        hideMessages();
+    }
+
+    function hideMessages() {
+        document.querySelectorAll('.error, .success').forEach(function(el) { el.style.display = 'none'; });
+    }
+
+    function showError(id, msg) {
+        var el = document.getElementById(id);
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function showSuccess(id, msg) {
+        var el = document.getElementById(id);
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function doLogin(e) {
+        e.preventDefault();
+        hideMessages();
+        var btn = document.getElementById('loginBtn');
+        btn.disabled = true;
+        btn.textContent = 'جاري الدخول...';
+
+        fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('loginUser').value,
+                password: document.getElementById('loginPass').value
+            })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            btn.disabled = false;
+            btn.textContent = 'دخول';
+            if (d.ok) {
+                window.location.href = '/index.html';
+            } else {
+                showError('loginError', d.error);
+            }
+        }).catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'دخول';
+            showError('loginError', 'خطأ في الاتصال');
+        });
+    }
+
+    function doRegister(e) {
+        e.preventDefault();
+        hideMessages();
+        var pass = document.getElementById('regPass').value;
+        var pass2 = document.getElementById('regPass2').value;
+
+        if (pass !== pass2) {
+            showError('regError', 'كلمتا المرور غير متطابقتين');
+            return;
+        }
+
+        var btn = document.getElementById('regBtn');
+        btn.disabled = true;
+        btn.textContent = 'جاري الإنشاء...';
+
+        fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('regUser').value,
+                password: pass
+            })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            btn.disabled = false;
+            btn.textContent = 'إنشاء حساب';
+            if (d.ok) {
+                showSuccess('regSuccess', d.msg);
+                document.getElementById('regUser').value = '';
+                document.getElementById('regPass').value = '';
+                document.getElementById('regPass2').value = '';
+                setTimeout(function() { showTab('login'); }, 1500);
+            } else {
+                showError('regError', d.error);
+            }
+        }).catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'إنشاء حساب';
+            showError('regError', 'خطأ في الاتصال');
+        });
+    }
+</script>
+</body>
+</html>
