@@ -2,13 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>خريطة صور الـ GPS</title>
+    <title>خريطة الصور والفيديوهات الجغرافية</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; width: 100%; background: #111; font-family: Tahoma, sans-serif; }
-
         #map { height: 100vh; width: 100vw; }
 
         #topbar {
@@ -29,16 +28,20 @@
         }
         #toggleLayer:hover { transform: scale(1.15); }
 
-        .photo-marker {
+        .media-marker {
             background: #fff; border: 2px solid #fff; border-radius: 10px;
             box-shadow: 0 3px 8px rgba(0,0,0,0.5); overflow: hidden;
             width: 50px; height: 50px; position: relative;
             display: flex; align-items: center; justify-content: center;
             transition: transform 0.2s; cursor: pointer;
         }
-        .photo-marker:hover { transform: scale(1.25); z-index: 1000; }
-        .photo-marker img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-marker::after {
+        .media-marker:hover { transform: scale(1.25); z-index: 1000; }
+        .media-marker img, .media-marker video { width: 100%; height: 100%; object-fit: cover; }
+        .video-badge {
+            position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.7);
+            color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 4px;
+        }
+        .media-marker::after {
             content: ''; position: absolute; bottom: -8px; left: 50%;
             transform: translateX(-50%); border-width: 6px 6px 0;
             border-style: solid; border-color: #fff transparent; width: 0;
@@ -50,7 +53,7 @@
             flex-direction: column; padding: 20px;
         }
         .modal.show { display: flex; }
-        .modal img { max-width: 90%; max-height: 75vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.7); }
+        .modal img, .modal video { max-width: 90vw; max-height: 75vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.7); }
         .modal .meta { color: #ddd; margin-top: 12px; font-size: 13px; text-align: center; }
         .close-btn {
             position: absolute; top: 15px; right: 25px; color: #fff;
@@ -61,7 +64,6 @@
 </head>
 <body>
 
-    <!-- الخريطة -->
     <div id="map"></div>
 
     <div id="topbar">
@@ -69,10 +71,10 @@
         <button id="toggleLayer" title="تبديل النوع">🛰</button>
     </div>
 
-    <!-- نافذة عرض الصورة بالحجم الكامل -->
-    <div id="photoModal" class="modal">
+    <!-- نافذة عرض الوسائط بالحجم الكامل (تتكيف تلقائياً للصورة أو الفيديو) -->
+    <div id="mediaModal" class="modal">
         <span class="close-btn" onclick="closeModal()">&times;</span>
-        <img id="modalImg" src="" alt="صورة مكبرة">
+        <div id="modalContentContainer"></div>
         <div class="meta" id="modalMeta"></div>
     </div>
 
@@ -80,69 +82,104 @@
     <script>
         const map = L.map('map', { attributionControl: false }).setView([23.5880, 58.3829], 10);
 
-            const satelliteEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-            const satelliteGoogle = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'] });
-            const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+        const satelliteEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        const satelliteGoogle = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'] });
+        const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
 
-            // ثلاث طبقات: 0=google, 1=esri, 2=streets
-            const layers = [satelliteGoogle, satelliteEsri, streets];
-            const layerIcons = ['🛰', '🗾', '🗺'];
-            let currentIdx = 0;
-            layers[0].addTo(map);
+        // ثلاث طبقات: 0=google, 1=esri, 2=streets
+        const layers = [satelliteGoogle, satelliteEsri, streets];
+        const layerIcons = ['🛰', '🗾', '🗺'];
+        let currentIdx = 0;
+        layers[0].addTo(map);
 
-            document.getElementById('toggleLayer').addEventListener('click', function() {
-                map.removeLayer(layers[currentIdx]);
-                currentIdx = (currentIdx + 1) % layers.length;
-                layers[currentIdx].addTo(map);
-                this.textContent = layerIcons[(currentIdx + 1) % 3];
+        document.getElementById('toggleLayer').addEventListener('click', function() {
+            map.removeLayer(layers[currentIdx]);
+            currentIdx = (currentIdx + 1) % layers.length;
+            layers[currentIdx].addTo(map);
+            this.textContent = layerIcons[(currentIdx + 1) % 3];
+        });
+
+        // دالة للتحقق مما إذا كان الملف فيديو بناءً على الـ Extension
+        function isVideoFile(url) {
+            const videoExtensions = ['.mp4', '.mov', '.webm', '.ogg', '.m4v'];
+            return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+        }
+
+        // إنشاء أيقونة مخصصة تدعم الصور والفيديوهات
+        function createMediaIcon(mediaUrl) {
+            let htmlContent = '';
+            if (isVideoFile(mediaUrl)) {
+                htmlContent = '<div class="media-marker"><video src="' + mediaUrl + '"></video><div class="video-badge">▶</div></div>';
+            } else {
+                htmlContent = '<div class="media-marker"><img src="' + mediaUrl + '" alt="صورة موقع"></div>';
+            }
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: htmlContent,
+                iconSize: [50, 60],
+                iconAnchor: [25, 60]
+            });
+        }
+
+        let loaded = 0;
+        const markers = [];
+
+        // جلب البيانات من ملف test_payload.json
+        fetch('test_payload.json')
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(item => {
+                    const mediaPath = item.url || item.img || item.path;
+                    if (item.lat && item.lng && mediaPath) {
+                        const marker = L.marker([item.lat, item.lng], {
+                            icon: createMediaIcon(mediaPath)
+                        }).addTo(map);
+                        marker.on('click', () => openModal(mediaPath, item.lat, item.lng));
+                        markers.push(marker);
+                    }
+                    loaded++;
+                    document.getElementById('info').textContent = '📷 ' + loaded + ' وسائط';
+                });
+
+                // fit bounds
+                if (markers.length > 0) {
+                    const group = L.featureGroup(markers);
+                    map.fitBounds(group.getBounds().pad(0.15));
+                }
+            })
+            .catch(error => {
+                console.error('خطأ في تحميل البيانات:', error);
+                document.getElementById('info').textContent = 'خطأ في تحميل البيانات';
             });
 
-            function createPhotoIcon(imgUrl) {
-                return L.divIcon({
-                    className: 'custom-div-icon',
-                    html: '<div class="photo-marker"><img src="' + imgUrl + '" alt=""></div>',
-                    iconSize: [50, 60], iconAnchor: [25, 60]
-                });
+        // فتح النافذة المنبثقة وعرض العنصر المناسب (صورة أو فيديو)
+        function openModal(mediaSrc, lat, lng) {
+            const modal = document.getElementById('mediaModal');
+            const container = document.getElementById('modalContentContainer');
+            container.innerHTML = ''; // تفريغ المحتوى السابق
+
+            if (isVideoFile(mediaSrc)) {
+                const videoEl = document.createElement('video');
+                videoEl.src = mediaSrc;
+                videoEl.controls = true;
+                videoEl.autoplay = true;
+                container.appendChild(videoEl);
+            } else {
+                const imgEl = document.createElement('img');
+                imgEl.src = mediaSrc;
+                container.appendChild(imgEl);
             }
 
-            let loaded = 0;
-            const markers = [];
-
-            fetch('test_payload.json')
-                .then(r => r.json())
-                .then(data => {
-                    data.forEach(item => {
-                        if (item.lat && item.lng) {
-                            const marker = L.marker([item.lat, item.lng], {
-                                icon: createPhotoIcon(item.img || 'IMG_5282.jpg')
-                            }).addTo(map);
-                            marker.on('click', () => openModal(item.img || 'IMG_5282.jpg', item.lat, item.lng));
-                            markers.push(marker);
-                        }
-                        loaded++;
-                        document.getElementById('info').textContent = '📷 ' + loaded + ' صورة';
-                    });
-
-                    // fit bounds
-                    if (markers.length > 0) {
-                        const group = L.featureGroup(markers);
-                        map.fitBounds(group.getBounds().pad(0.15));
-                    }
-                })
-                .catch(error => {
-                    console.error('خطأ في تحميل البيانات:', error);
-                    document.getElementById('info').textContent = 'خطأ في تحميل البيانات';
-                });
-
-        function openModal(src, lat, lng) {
-            document.getElementById('modalImg').src = src;
             document.getElementById('modalMeta').innerHTML =
                 'خط العرض: ' + lat.toFixed(6) + ' &nbsp; | &nbsp; خط الطول: ' + lng.toFixed(6);
-            document.getElementById('photoModal').classList.add('show');
+            modal.classList.add('show');
         }
 
         function closeModal() {
-            document.getElementById('photoModal').classList.remove('show');
+            const modal = document.getElementById('mediaModal');
+            const container = document.getElementById('modalContentContainer');
+            modal.classList.remove('show');
+            container.innerHTML = ''; // إيقاف الفيديو عند الإغلاق
         }
 
         document.addEventListener('keydown', function(e) {
