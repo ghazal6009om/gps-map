@@ -31,7 +31,7 @@
       position: absolute;
       top: 15px;
       right: 15px;
-      z-index: 900;
+      z-index: 1001;
       display: flex;
       gap: 10px;
     }
@@ -93,7 +93,7 @@
       background: #1e293b;
       color: #f8fafc;
       box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
-      z-index: 1000;
+      z-index: 2000;
       transition: right 0.3s ease-in-out;
       display: flex;
       flex-direction: column;
@@ -251,7 +251,7 @@
       }
 
       .sidebar.open {
-        right: 0;
+        right: 0 !important;
       }
 
       .top-controls {
@@ -461,7 +461,11 @@
 
     map.on('moveend', updateSidebarMedia);
 
-    function toggleSidebar() {
+    function toggleSidebar(e) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('open');
       setTimeout(() => map.invalidateSize(), 300);
