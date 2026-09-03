@@ -64,6 +64,53 @@
             font-size: 40px; font-weight: bold; cursor: pointer; line-height: 1;
         }
         .close-btn:hover { color: #ff6666; }
+
+        /* زر فتح الشريط الجانبي */
+        .sidebar-btn {
+            position: fixed; top: 70px; right: 12px; z-index: 1001;
+            width: 44px; height: 44px; border-radius: 50%; border: none;
+            background: #fff; font-size: 20px; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .sidebar-btn:hover { transform: scale(1.15); }
+
+        /* الشريط الجانبي */
+        .sidebar {
+            position: fixed; top: 0; right: -340px; width: 340px; height: 100%;
+            background: #1e1e1e; z-index: 2500;
+            box-shadow: -2px 0 12px rgba(0,0,0,0.5);
+            transition: right 0.3s ease; display: flex; flex-direction: column;
+        }
+        .sidebar.open { right: 0; }
+        .sidebar-header {
+            padding: 15px 18px; background: #2c3e50; color: #fff;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sidebar-header h3 { font-size: 15px; font-weight: normal; }
+        .sidebar-close {
+            background: none; border: none; color: #fff; font-size: 22px;
+            cursor: pointer; line-height: 1;
+        }
+        .sidebar-close:hover { color: #ff6666; }
+        .sidebar-content { flex: 1; padding: 15px; overflow-y: auto; }
+        .sidebar-content::-webkit-scrollbar { width: 8px; }
+        .sidebar-content::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+
+        .media-card {
+            background: #2a2a2a; border: 1px solid #333; border-radius: 10px;
+            margin-bottom: 12px; overflow: hidden; cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .media-card:hover { transform: translateY(-2px); border-color: #4a9eff; }
+        .media-card img, .media-card video {
+            width: 100%; height: 150px; object-fit: cover; display: block; background: #000;
+        }
+        .media-card .media-info { padding: 10px 12px; color: #ddd; }
+        .media-card .media-title { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #fff; }
+        .media-card .media-meta { font-size: 11px; color: #999; }
+        .empty-msg { color: #777; text-align: center; padding: 20px 10px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -73,6 +120,20 @@
     <div id="topbar">
         <div id="info"></div>
         <button id="toggleLayer" title="تبديل النوع">🛰</button>
+    </div>
+
+    <!-- زر فتح القائمة الجانبية -->
+    <button id="sidebarBtn" class="sidebar-btn" title="قائمة الوسائط">📋</button>
+
+    <!-- الشريط الجانبي: قائمة الوسائط الظاهرة في نطاق الخريطة -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>الوسائط في هذا النطاق</h3>
+            <button class="sidebar-close" onclick="toggleSidebar()">✖</button>
+        </div>
+        <div id="sidebar-content" class="sidebar-content">
+            <p class="empty-msg">حرّك الخريطة لعرض الوسائط القريبة...</p>
+        </div>
     </div>
 
     <!-- نافذة عرض الوسائط بالحجم الكامل -->
@@ -136,6 +197,21 @@
 
         let loaded = 0;
         const markers = [];
+        const allMedia = [];
+
+        // استخراج اسم ملف من المسار
+        function fileNameFromPath(path) {
+            const parts = path.split('/');
+            return parts[parts.length - 1];
+        }
+
+        // تحديد وسيلة العرض للبطاقة: صورة أو فيديو
+        function cardThumbnail(mediaPath) {
+            if (isVideoFile(mediaPath)) {
+                return '<video src="' + mediaPath + '" muted preload="metadata"></video>';
+            }
+            return '<img src="' + mediaPath + '" alt="صورة">';
+        }
 
         fetch('test_payload.json')
             .then(r => r.json())
@@ -143,11 +219,18 @@
                 data.forEach(item => {
                     const mediaPath = item.url || item.img || item.path;
                     if (item.lat && item.lng && mediaPath) {
+                        const mediaObj = {
+                            lat: item.lat, lng: item.lng,
+                            path: mediaPath, name: fileNameFromPath(mediaPath)
+                        };
+                        allMedia.push(mediaObj);
+
                         const marker = L.marker([item.lat, item.lng], {
                             icon: createMediaIcon(mediaPath)
                         }).addTo(map);
 
                         marker.on('click', () => openModal(mediaPath, item.lat, item.lng));
+                        marker._media = mediaObj;
                         markers.push(marker);
                     }
                     loaded++;
@@ -159,11 +242,59 @@
                     const group = L.featureGroup(markers);
                     map.fitBounds(group.getBounds().pad(0.15));
                 }
+
+                updateSidebar();
             })
             .catch(error => {
                 console.error('خطأ في تحميل البيانات:', error);
                 document.getElementById('info').textContent = 'خطأ في تحميل البيانات';
             });
+
+        // تحديث قائمة الوسائط بحسب نطاق الخريطة الظاهر
+        function updateSidebar() {
+            const bounds = map.getBounds();
+            const contentDiv = document.getElementById('sidebar-content');
+            const visible = allMedia.filter(m => bounds.contains([m.lat, m.lng]));
+
+            contentDiv.innerHTML = '';
+            if (visible.length === 0) {
+                contentDiv.innerHTML = '<p class="empty-msg">لا توجد وسائط في هذه المنطقة. حاول التكبير أو تحريك الخريطة.</p>';
+                return;
+            }
+
+            visible.forEach(m => {
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                const typeLabel = isVideoFile(m.path) ? '🎬 فيديو' : '🖼 صورة';
+                card.innerHTML =
+                    '<div class="media-thumb">' + cardThumbnail(m.path) + '</div>' +
+                    '<div class="media-info">' +
+                        '<div class="media-title">' + m.name + '</div>' +
+                        '<div class="media-meta">' + typeLabel +
+                        ' &nbsp;|&nbsp; ' + m.lat.toFixed(4) + ', ' + m.lng.toFixed(4) +
+                        '</div></div>';
+
+                card.onclick = () => {
+                    const target = markers.find(mk => mk._media === m);
+                    if (target) {
+                        map.flyTo([m.lat, m.lng], Math.max(map.getZoom(), 13));
+                    }
+                    openModal(m.path, m.lat, m.lng);
+                };
+
+                contentDiv.appendChild(card);
+            });
+        }
+
+        // فتح/إغلاق الشريط الجانبي
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        document.getElementById('sidebarBtn').addEventListener('click', toggleSidebar);
+
+        // تحديث القائمة عند تحريك الخريطة
+        map.on('moveend', updateSidebar);
 
         function openModal(mediaSrc, lat, lng) {
             const modal = document.getElementById('mediaModal');
