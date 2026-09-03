@@ -94,7 +94,7 @@
       color: #f8fafc;
       box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
       z-index: 2000;
-      transition: right 0.3s ease-in-out;
+      transition: all 0.3s ease-in-out;
       display: flex;
       flex-direction: column;
     }
@@ -245,12 +245,20 @@
     /* استجابة الهواتف والأجهزة الذكية الصغيرة */
     /* =================================================== */
     @media (max-width: 600px) {
+      /* تحويل القائمة الجانبية إلى لوحة سفلية بدلاً من اليمين */
       .sidebar {
-        width: 85vw;
-        right: -85vw;
+        top: auto;
+        bottom: -55vh;
+        right: 0;
+        left: 0;
+        width: 100% !important;
+        height: 55vh;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
       }
 
       .sidebar.open {
+        bottom: 0 !important;
         right: 0 !important;
       }
 
@@ -261,17 +269,46 @@
       }
 
       .btn-control {
-        padding: 8px 10px;
-        font-size: 11px;
+        padding: 8px 12px;
+        font-size: 12px;
         border-radius: 6px;
       }
 
+      .sidebar-header {
+        padding: 10px 14px;
+      }
+
+      .sidebar-header h3 {
+        font-size: 13px;
+      }
+
+      .sidebar-content {
+        padding: 8px 12px;
+      }
+
+      /* كروت أفقية متناسقة في الهاتف */
+      .media-card {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        background: #1e293b;
+        border: 1px solid #334155;
+      }
+
       .media-card img {
-        height: 110px;
+        width: 100px !important;
+        height: 70px !important;
+        flex-shrink: 0;
+      }
+
+      .media-info {
+        padding: 6px 10px;
+        flex: 1;
       }
 
       .media-title {
         font-size: 12px;
+        margin-bottom: 2px;
       }
 
       .media-coords {
@@ -298,7 +335,7 @@
 
   <div id="map-container">
     <div class="top-controls">
-      <button class="btn-control" onclick="toggleSidebar()">📁 الوسائط</button>
+      <button class="btn-control" onclick="toggleSidebar(event)">📁 الوسائط</button>
 
       <div class="map-style-menu">
         <button class="btn-control" onclick="toggleMapDropdown(event)">🗺️ نوع الخريطة</button>
@@ -315,7 +352,7 @@
     <div id="sidebar" class="sidebar">
       <div class="sidebar-header">
         <h3>الوسائط في هذا النطاق</h3>
-        <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        <button class="close-btn" onclick="toggleSidebar(event)">✕</button>
       </div>
       <div id="sidebar-content" class="sidebar-content">
         <p style="color: #94a3b8; text-align: center;">جارٍ تحميل البيانات...</p>
