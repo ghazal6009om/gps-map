@@ -31,7 +31,7 @@
       position: absolute;
       top: 15px;
       right: 15px;
-      z-index: 1001;
+      z-index: 900;
       display: flex;
       gap: 10px;
     }
@@ -83,7 +83,7 @@
     .map-dropdown button:hover { background: #1e293b; color: #38bdf8; }
     .map-dropdown button.active { background: #334155; color: #38bdf8; font-weight: bold; }
 
-    /* القائمة الجانبية */
+    /* القائمة الجانبية (شاشات الكمبيوتر) */
     .sidebar {
       position: absolute;
       top: 0;
@@ -93,7 +93,7 @@
       background: #1e293b;
       color: #f8fafc;
       box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
-      z-index: 2000;
+      z-index: 1000;
       transition: all 0.3s ease-in-out;
       display: flex;
       flex-direction: column;
@@ -125,6 +125,7 @@
       overflow-y: auto;
     }
 
+    /* كروت الوسائط بالتصاميم الحديثة */
     .media-card {
       background: #334155;
       border-radius: 8px;
@@ -133,6 +134,7 @@
       cursor: pointer;
       transition: transform 0.2s, border-color 0.2s;
       border: 1px solid transparent;
+      position: relative;
     }
 
     .media-card:hover {
@@ -140,12 +142,54 @@
       border-color: #38bdf8;
     }
 
-    .media-card img {
+    .media-thumb-container {
+      position: relative;
       width: 100%;
       height: 140px;
+      background: #0f172a;
+      overflow: hidden;
+    }
+
+    .media-thumb-container img,
+    .media-thumb-container video {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
       display: block;
-      background: #0f172a;
+    }
+
+    /* أيقونة تشغيل الفيديو الشفافة فوق الصورة المصغرة */
+    .play-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 42px;
+      height: 42px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .media-card:hover .play-overlay {
+      transform: translate(-50%, -50%) scale(1.1);
+      background: rgba(56, 189, 248, 0.85);
+    }
+
+    .play-overlay::after {
+      content: '';
+      display: block;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 7px 0 7px 12px;
+      border-color: transparent transparent transparent #ffffff;
+      margin-left: 3px;
     }
 
     .media-info { padding: 10px; }
@@ -159,24 +203,6 @@
     }
 
     .media-coords { font-size: 11px; color: #94a3b8; }
-
-    /* علامات الصور على الخريطة */
-    .photo-marker {
-      width: 40px;
-      height: 40px;
-      border: 2px solid #38bdf8;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #0f172a;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-      cursor: pointer;
-    }
-    .photo-marker img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
 
     /* النافذة المنبثقة (Modal) */
     .modal-overlay {
@@ -242,11 +268,40 @@
       z-index: 100000;
     }
 
+    /* علامات الصور على الخريطة (مصغّرة) */
+    .photo-marker {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #38bdf8;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0f172a;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+    }
+    .photo-marker img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* أيقونات الخريطة المخصصة للفيديوهات */
+    .custom-marker-icon {
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      border-radius: 50%;
+      color: white;
+      text-align: center;
+      line-height: 28px;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
     /* =================================================== */
-    /* استجابة الهواتف والأجهزة الذكية الصغيرة */
+    /* تحسين العرض للهواتف الذكية */
     /* =================================================== */
     @media (max-width: 600px) {
-      /* تحويل القائمة الجانبية إلى لوحة سفلية بدلاً من اليمين */
       .sidebar {
         top: auto;
         bottom: -55vh;
@@ -275,19 +330,10 @@
         border-radius: 6px;
       }
 
-      .sidebar-header {
-        padding: 10px 14px;
-      }
+      .sidebar-header { padding: 10px 14px; }
+      .sidebar-header h3 { font-size: 13px; }
+      .sidebar-content { padding: 8px 12px; }
 
-      .sidebar-header h3 {
-        font-size: 13px;
-      }
-
-      .sidebar-content {
-        padding: 8px 12px;
-      }
-
-      /* كروت أفقية متناسقة في الهاتف */
       .media-card {
         display: flex;
         align-items: center;
@@ -296,10 +342,21 @@
         border: 1px solid #334155;
       }
 
-      .media-card img {
+      .media-thumb-container {
         width: 100px !important;
         height: 70px !important;
         flex-shrink: 0;
+      }
+
+      .play-overlay {
+        width: 28px;
+        height: 28px;
+        border-width: 1.5px;
+      }
+
+      .play-overlay::after {
+        border-width: 5px 0 5px 8px;
+        margin-left: 2px;
       }
 
       .media-info {
@@ -307,29 +364,12 @@
         flex: 1;
       }
 
-      .media-title {
-        font-size: 12px;
-        margin-bottom: 2px;
-      }
+      .media-title { font-size: 12px; margin-bottom: 2px; }
+      .media-coords { font-size: 10px; }
 
-      .media-coords {
-        font-size: 10px;
-      }
-
-      .modal-content {
-        max-width: 95vw;
-        max-height: 85vh;
-      }
-
-      .modal-content img,
-      .modal-content video {
-        max-height: 65vh;
-      }
-
-      .modal-footer {
-        font-size: 11px;
-        padding: 8px 12px;
-      }
+      .modal-content { max-width: 95vw; max-height: 85vh; }
+      .modal-content img, .modal-content video { max-height: 65vh; }
+      .modal-footer { font-size: 11px; padding: 8px 12px; }
     }
   </style>
 </head>
@@ -340,9 +380,9 @@
       <button class="btn-control" onclick="toggleSidebar(event)">📁 الوسائط</button>
 
       <div class="map-style-menu">
-        <button class="btn-control" onclick="toggleMapDropdown(event)">🗺️ نوع الخريطة</button>
+        <button class="btn-control" onclick="toggleMapDropdown(event)">🗺️ الخريطة</button>
         <div id="map-dropdown" class="map-dropdown">
-          <button id="btn-satellite" class="active" onclick="changeTileLayer('satellite')">🛰️ ساتلايت</button>
+          <button id="btn-satellite" class="active" onclick="changeTileLayer('satellite')">🛰️ ساتلايت (Esri)</button>
           <button id="btn-google" onclick="changeTileLayer('google')">🗺️ خرائط جوجل</button>
           <button id="btn-osm" onclick="changeTileLayer('osm')">🌐 OpenStreetMap</button>
         </div>
@@ -363,8 +403,10 @@
   </div>
 
   <div id="photo-modal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
-    <div class="modal-content" onclick="event.stopPropagation()">
+    <div id="modal-container-box" class="modal-content" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeModal()">✕</button>
+      <!-- سيتم إدراج الصورة أو الفيديو هنا عبر الجافاسكريبت -->
+      <div id="modal-media-wrapper" style="width:100%; display:flex; justify-content:center; align-items:center;"></div>
       <div id="modal-footer" class="modal-footer"></div>
     </div>
   </div>
@@ -376,10 +418,8 @@
     const map = L.map('map').setView([17.226842, 54.160492], 13);
 
     const tileLayers = {
-      satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
-        maxZoom: 20,
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Maps Satellite'
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri'
       }),
       google: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         maxZoom: 20,
@@ -423,9 +463,26 @@
 
     let mediaData = [];
 
-    // استخراج المسار مع دعم أساليب التسمية المحتملة في test_payload.json
+    // استخراج المسار أو الرابط للوسائط (يدعم img المستخدم في test_payload.json)
     function getMediaSrc(item) {
       return item.path || item.img || item.url || item.src || item.image_path || item.file || item.image || '';
+    }
+
+    // استخراج رابط الصورة المصغرة (Thumbnail) للفيديو إما من الحقل المخصص أو استخدم نفس المسار
+    function getThumbnailSrc(item) {
+      return item.thumb || item.thumbnail || item.poster || getMediaSrc(item);
+    }
+
+    // التحقق هل العنصر فيديو أم صورة
+    function isVideoFile(item) {
+      const src = getMediaSrc(item).toLowerCase();
+      const type = (item.type || item.media_type || '').toLowerCase();
+
+      return type.includes('video') ||
+             src.endsWith('.mp4') ||
+             src.endsWith('.mov') ||
+             src.endsWith('.webm') ||
+             src.endsWith('.m4v');
     }
 
     fetch('test_payload.json')
@@ -446,37 +503,37 @@
     function initMarkers() {
       mediaData.forEach(item => {
         if (item.lat && item.lng) {
-          const src = getMediaSrc(item) || '';
+          let marker;
           const isVideo = isVideoFile(item);
-          const icon = L.divIcon({
-            className: '',
-            html: '<div class="photo-marker">' +
-                  (isVideo
-                    ? '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;">🎥</div>'
-                    : '<img src="' + src + '" alt="" onerror="this.outerHTML=String.fromCharCode(128247)">') +
-                  '</div>',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-          });
-          const marker = L.marker([item.lat, item.lng], { icon: icon }).addTo(map);
+          const src = getMediaSrc(item) || '';
+
+          if (isVideo) {
+            // أيقونة فيديو خاصة
+            const videoIcon = L.divIcon({
+              className: 'custom-marker-icon',
+              html: '🎥',
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            });
+            marker = L.marker([item.lat, item.lng], { icon: videoIcon }).addTo(map);
+          } else {
+            // مصغّرة الصورة (بدل الأيقونة الافتراضية غير المرئية محلياً)
+            const photoIcon = L.divIcon({
+              className: '',
+              html: '<div class="photo-marker"><img src="' + src +
+                    '" alt="" onerror="this.outerHTML=String.fromCharCode(128247)"></div>',
+              iconSize: [40, 40],
+              iconAnchor: [20, 20]
+            });
+            marker = L.marker([item.lat, item.lng], { icon: photoIcon }).addTo(map);
+          }
+
           marker.on('click', (e) => {
             L.DomEvent.stopPropagation(e);
             openModal(item);
           });
         }
       });
-    }
-
-    // الدالة المساعدة لمعرفة هل الملف فيديو أم صورة
-    function isVideoFile(item) {
-      const src = getMediaSrc(item).toLowerCase();
-      const type = (item.type || item.media_type || '').toLowerCase();
-
-      return type.includes('video') ||
-             src.endsWith('.mp4') ||
-             src.endsWith('.mov') ||
-             src.endsWith('.webm') ||
-             src.endsWith('.m4v');
     }
 
     function updateSidebarMedia() {
@@ -495,22 +552,22 @@
 
       visibleMedia.forEach(item => {
         const imgSrc = getMediaSrc(item);
+        const thumbSrc = getThumbnailSrc(item);
         const isVideo = isVideoFile(item);
 
         const card = document.createElement('div');
         card.className = 'media-card';
-        card.style.position = 'relative'; // لضبط شارة التمييز
 
+        // محتوى الكرت: يعرض الصورة المصغرة + أزرار الـ Play التفاعلية إذا كان فيديو
         card.innerHTML = `
-          <div style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; z-index: 2;">
-            ${isVideo ? '🎥 فيديو' : '📷 صورة'}
+          <div class="media-thumb-container">
+            ${isVideo
+              ? `<video src="${imgSrc}#t=0.5" preload="metadata" muted></video><div class="play-overlay"></div>`
+              : `<img src="${thumbSrc}" alt="${item.name || 'صورة'}" onerror="this.src='https://via.placeholder.com/300x150?text=Image+NotFound'">`
+            }
           </div>
-          ${isVideo
-            ? `<video src="${imgSrc}#t=0.5" preload="metadata" style="width:100%; height:140px; object-fit:cover; display:block; background:#0f172a;"></video>`
-            : `<img src="${imgSrc}" alt="${item.name || 'صورة'}" onerror="this.src='https://via.placeholder.com/300x150?text=Image+NotFound'">`
-          }
           <div class="media-info">
-            <div class="media-title">${item.name || 'وسائط جغرافية'}</div>
+            <div class="media-title">${isVideo ? '🎥 ' : '📷 '}${item.name || 'وسائط جغرافية'}</div>
             <div class="media-coords">عرض: ${Number(item.lat).toFixed(4)} | طول: ${Number(item.lng).toFixed(4)}</div>
           </div>
         `;
@@ -528,10 +585,7 @@
     map.on('moveend', updateSidebarMedia);
 
     function toggleSidebar(e) {
-      if (e) {
-        e.stopPropagation();
-        e.preventDefault();
-      }
+      if (e) e.stopPropagation();
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('open');
       setTimeout(() => map.invalidateSize(), 300);
@@ -539,58 +593,51 @@
 
     function openModal(item) {
       const modal = document.getElementById('photo-modal');
-      const modalContent = document.querySelector('.modal-content');
+      const mediaWrapper = document.getElementById('modal-media-wrapper');
       const modalFooter = document.getElementById('modal-footer');
 
       const imgSrc = getMediaSrc(item);
       const isVideo = isVideoFile(item);
 
-      // إزالة أي عنصر معروض سابقاً (صورة أو فيديو)
-      const oldMedia = document.getElementById('modal-media');
-      if (oldMedia) oldMedia.remove();
+      // تفريغ المحتوى السابق
+      mediaWrapper.innerHTML = '';
 
-      // إنشاء العنصر المناسب (Video أو Img)
-      let mediaElement;
       if (isVideo) {
-        mediaElement = document.createElement('video');
-        mediaElement.id = 'modal-media';
-        mediaElement.src = imgSrc;
-        mediaElement.controls = true;
-        mediaElement.autoplay = true;
-        mediaElement.style.maxWidth = '100%';
-        mediaElement.style.maxHeight = '75vh';
+        // إنشاء عنصر فيديو مع أدوات التحكم
+        const videoElement = document.createElement('video');
+        videoElement.src = imgSrc;
+        videoElement.controls = true;
+        videoElement.autoplay = true;
+        videoElement.style.maxWidth = '100%';
+        videoElement.style.maxHeight = '75vh';
+        mediaWrapper.appendChild(videoElement);
       } else {
-        mediaElement = document.createElement('img');
-        mediaElement.id = 'modal-media';
-        mediaElement.src = imgSrc;
-        mediaElement.alt = item.name || 'معاينة';
-        mediaElement.style.maxWidth = '100%';
-        mediaElement.style.maxHeight = '75vh';
-        mediaElement.onerror = function () {
+        // إنشاء عنصر صورة
+        const imgElement = document.createElement('img');
+        imgElement.src = imgSrc;
+        imgElement.alt = item.name || 'معاينة الصورة';
+        imgElement.style.maxWidth = '100%';
+        imgElement.style.maxHeight = '75vh';
+        imgElement.onerror = function () {
           this.onerror = null;
           this.src = 'https://via.placeholder.com/600x400?text=Image+NotFound';
         };
+        mediaWrapper.appendChild(imgElement);
       }
 
-      // إدراج العنصر قبل الفوتر
-      modalContent.insertBefore(mediaElement, modalFooter);
-
-      modalFooter.innerHTML = `
-        <b>${isVideo ? '🎥 فيديو' : '📷 صورة'}: ${item.name || ''}</b><br>
-        خط العرض: ${item.lat} | خط الطول: ${item.lng}
-      `;
-
+      modalFooter.innerHTML = `<b>${isVideo ? '🎥 فيديو' : '📷 صورة'}: ${item.name || ''}</b><br>خط العرض: ${item.lat} | خط الطول: ${item.lng}`;
       modal.classList.add('active');
     }
 
     function closeModal() {
-      // إيقاف أي فيديو يعمل وإزالة الوسيط
-      const media = document.getElementById('modal-media');
-      if (media) {
-        if (media.tagName === 'VIDEO') media.pause();
-        media.remove();
-      }
-      document.getElementById('photo-modal').classList.remove('active');
+      const modal = document.getElementById('photo-modal');
+      const mediaWrapper = document.getElementById('modal-media-wrapper');
+
+      // إيقاف تشغيل الفيديو عند إغلاق النافذة
+      const video = mediaWrapper.querySelector('video');
+      if (video) video.pause();
+
+      modal.classList.remove('active');
     }
 
     function closeModalOnBackdrop(e) {
