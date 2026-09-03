@@ -7,12 +7,16 @@
     <link rel="stylesheet" href="css/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; width: 100%; background: #111; font-family: Tahoma, sans-serif; }
-        #map { height: 100vh; width: 100vw; }
+        html, body { height: 100%; width: 100%; background: #000; font-family: system-ui, -apple-system, sans-serif; }
 
+        /* حاوي الخريطة */
+        #map-container { position: relative; width: 100%; height: 100%; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+
+        /* الكاشف العلوي + تبديل الطبقات */
         #topbar {
-            position: fixed; top: 12px; right: 12px; z-index: 999;
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            position: absolute; top: 14px; right: 14px; z-index: 900;
+            display: flex; align-items: center; gap: 8px;
         }
         #info {
             background: rgba(0,0,0,0.7); color: #fff; padding: 8px 14px;
@@ -20,17 +24,27 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap;
         }
         #toggleLayer {
-            width: 44px; height: 44px; border-radius: 50%; border: none;
-            background: #fff; font-size: 20px; cursor: pointer;
+            width: 42px; height: 42px; border-radius: 50%; border: none;
+            background: #fff; font-size: 18px; cursor: pointer;
             box-shadow: 0 2px 8px rgba(0,0,0,0.4);
             display: flex; align-items: center; justify-content: center;
             transition: transform 0.2s;
         }
         #toggleLayer:hover { transform: scale(1.15); }
 
-        /* تصميم مربع الوسائط المصغرة على الخريطة */
+        /* زر فتح القائمة الجانبية */
+        .toggle-btn {
+            position: absolute; top: 64px; right: 14px; z-index: 900;
+            background: #0f172a; color: #fff; border: 1px solid #334155;
+            padding: 10px 16px; border-radius: 6px; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 13px;
+            transition: background 0.2s;
+        }
+        .toggle-btn:hover { background: #1e293b; }
+
+        /* مصغّرات الوسائط على الخريطة */
         .media-marker {
-            background: #fff; border: 2px solid #fff; border-radius: 10px;
+            background: #fff; border: 2px solid #fff; border-radius: 8px;
             box-shadow: 0 3px 8px rgba(0,0,0,0.5); overflow: hidden;
             width: 50px; height: 50px; position: relative;
             display: flex; align-items: center; justify-content: center;
@@ -38,8 +52,6 @@
         }
         .media-marker:hover { transform: scale(1.25); z-index: 1000; }
         .media-marker img, .media-marker video { width: 100%; height: 100%; object-fit: cover; }
-
-        /* علامة مميزة للفيديو */
         .video-badge {
             position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.7);
             color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 4px;
@@ -50,143 +62,150 @@
             border-style: solid; border-color: #fff transparent; width: 0;
         }
 
-        /* نافذة المعاينة المنبثقة */
-        .modal {
-            display: none; position: fixed; z-index: 2000; inset: 0;
-            background: rgba(0,0,0,0.85); align-items: center; justify-content: center;
-            flex-direction: column; padding: 20px;
-        }
-        .modal.show { display: flex; }
-        .modal img, .modal video { max-width: 90vw; max-height: 75vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.7); }
-        .modal .meta { color: #ddd; margin-top: 12px; font-size: 13px; text-align: center; }
-        .close-btn {
-            position: absolute; top: 15px; right: 25px; color: #fff;
-            font-size: 40px; font-weight: bold; cursor: pointer; line-height: 1;
-        }
-        .close-btn:hover { color: #ff6666; }
-
-        /* زر فتح الشريط الجانبي */
-        .sidebar-btn {
-            position: fixed; top: 70px; right: 12px; z-index: 1001;
-            width: 44px; height: 44px; border-radius: 50%; border: none;
-            background: #fff; font-size: 20px; cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s;
-        }
-        .sidebar-btn:hover { transform: scale(1.15); }
-
         /* الشريط الجانبي */
         .sidebar {
-            position: fixed; top: 0; right: -340px; width: 340px; height: 100%;
-            background: #1e1e1e; z-index: 2500;
-            box-shadow: -2px 0 12px rgba(0,0,0,0.5);
-            transition: right 0.3s ease; display: flex; flex-direction: column;
+            position: absolute; top: 0; right: -330px; width: 330px; height: 100%;
+            background: #1e293b; color: #f8fafc; box-shadow: -4px 0 15px rgba(0,0,0,0.5);
+            z-index: 1000; transition: right 0.3s ease-in-out;
+            display: flex; flex-direction: column;
         }
         .sidebar.open { right: 0; }
         .sidebar-header {
-            padding: 15px 18px; background: #2c3e50; color: #fff;
-            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; background: #0f172a; display: flex;
+            justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;
         }
-        .sidebar-header h3 { font-size: 15px; font-weight: normal; }
-        .sidebar-close {
-            background: none; border: none; color: #fff; font-size: 22px;
-            cursor: pointer; line-height: 1;
-        }
-        .sidebar-close:hover { color: #ff6666; }
-        .sidebar-content { flex: 1; padding: 15px; overflow-y: auto; }
+        .sidebar-header h3 { font-size: 16px; font-weight: 600; }
+        .close-btn { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+        .close-btn:hover { color: #fff; }
+        .sidebar-content { flex: 1; padding: 12px; overflow-y: auto; }
         .sidebar-content::-webkit-scrollbar { width: 8px; }
-        .sidebar-content::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        .sidebar-content::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 
+        /* كروت الوسائط */
         .media-card {
-            background: #2a2a2a; border: 1px solid #333; border-radius: 10px;
-            margin-bottom: 12px; overflow: hidden; cursor: pointer;
+            background: #334155; border-radius: 8px; margin-bottom: 12px;
+            overflow: hidden; cursor: pointer; border: 1px solid transparent;
             transition: transform 0.2s, border-color 0.2s;
         }
-        .media-card:hover { transform: translateY(-2px); border-color: #4a9eff; }
+        .media-card:hover { transform: translateY(-2px); border-color: #38bdf8; }
         .media-card img, .media-card video {
-            width: 100%; height: 150px; object-fit: cover; display: block; background: #000;
+            width: 100%; height: 140px; object-fit: cover; display: block; background: #000;
         }
-        .media-card .media-info { padding: 10px 12px; color: #ddd; }
-        .media-card .media-title { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #fff; }
-        .media-card .media-meta { font-size: 11px; color: #999; }
-        .empty-msg { color: #777; text-align: center; padding: 20px 10px; font-size: 13px; }
+        .media-info { padding: 10px; }
+        .media-title { font-weight: 600; font-size: 13px; color: #f1f5f9; word-break: break-all; margin-bottom: 4px; }
+        .media-type { font-size: 11px; color: #7dd3fc; margin-bottom: 4px; }
+        .media-coords { font-size: 11px; color: #94a3b8; }
+        .empty-msg { color: #94a3b8; text-align: center; margin-top: 20px; font-size: 13px; padding: 10px; }
+
+        /* العارض الأوسط (Modal) - يتفوق على كل شيء */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 2000;
+            display: none; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            position: relative; background: #0f172a; border-radius: 12px; overflow: hidden;
+            max-width: 92vw; max-height: 92vh; display: flex; flex-direction: column;
+            align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.8); border: 1px solid #334155;
+        }
+        .modal-content img { max-width: 100%; max-height: 76vh; object-fit: contain; display: block; }
+        .modal-content video { max-width: 92vw; max-height: 80vh; display: block; }
+        .modal-footer {
+            padding: 12px 20px; background: #0f172a; color: #94a3b8; font-size: 13px;
+            width: 100%; text-align: center; border-top: 1px solid #1e293b;
+        }
+        .modal-close {
+            position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6);
+            color: #fff; border: none; width: 34px; height: 34px; border-radius: 50%;
+            cursor: pointer; font-size: 18px; z-index: 2010;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+    <div id="map-container">
+        <div id="topbar">
+            <div id="info"></div>
+            <button id="toggleLayer" title="تبديل الخريطة">🛰</button>
+        </div>
 
-    <div id="topbar">
-        <div id="info"></div>
-        <button id="toggleLayer" title="تبديل النوع">🛰</button>
+        <button class="toggle-btn" onclick="toggleSidebar()">📁 الوسائط في هذا النطاق</button>
+
+        <!-- الخريطة -->
+        <div id="map"></div>
+
+        <!-- القائمة الجانبية -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h3>الوسائط في هذا النطاق</h3>
+                <button class="close-btn" onclick="toggleSidebar()">✕</button>
+            </div>
+            <div id="sidebar-content" class="sidebar-content">
+                <p class="empty-msg">جارٍ تحميل البيانات...</p>
+            </div>
+        </div>
     </div>
 
-    <!-- زر فتح القائمة الجانبية -->
-    <button id="sidebarBtn" class="sidebar-btn" title="قائمة الوسائط">📋</button>
-
-    <!-- الشريط الجانبي: قائمة الوسائط الظاهرة في نطاق الخريطة -->
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <h3>الوسائط في هذا النطاق</h3>
-            <button class="sidebar-close" onclick="toggleSidebar()">✖</button>
+    <!-- العارض الأوسط -->
+    <div id="media-modal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div id="modal-body"></div>
+            <div id="modal-footer" class="modal-footer"></div>
         </div>
-        <div id="sidebar-content" class="sidebar-content">
-            <p class="empty-msg">حرّك الخريطة لعرض الوسائط القريبة...</p>
-        </div>
-    </div>
-
-    <!-- نافذة عرض الوسائط بالحجم الكامل -->
-    <div id="mediaModal" class="modal">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <div id="modalContentContainer"></div>
-        <div class="meta" id="modalMeta"></div>
     </div>
 
     <script src="js/leaflet.js"></script>
     <script>
         const map = L.map('map', { attributionControl: false }).setView([23.5880, 58.3829], 10);
 
+        // ثلاث طبقات خرائط قابلة للتبديل
         const satelliteEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
         const satelliteGoogle = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'] });
         const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
 
-        // ثلاث طبقات: 0=google, 1=esri, 2=streets
         const layers = [satelliteGoogle, satelliteEsri, streets];
         const layerIcons = ['🛰', '🗾', '🗺'];
         let currentIdx = 0;
         layers[0].addTo(map);
 
-        document.getElementById('toggleLayer').addEventListener('click', function() {
+        document.getElementById('toggleLayer').addEventListener('click', function () {
             map.removeLayer(layers[currentIdx]);
             currentIdx = (currentIdx + 1) % layers.length;
             layers[currentIdx].addTo(map);
             this.textContent = layerIcons[(currentIdx + 1) % 3];
         });
 
-        // دالة محسنة للتحقق من امتدادات الفيديو بما فيها MOV للأيفون
+        // التحقق من امتدادات الفيديو (بما فيها MOV للأيفون)
         function isVideoFile(url) {
             const videoExtensions = ['.mp4', '.mov', '.webm', '.ogg', '.m4v'];
-            const lowerUrl = url.toLowerCase();
-            return videoExtensions.some(ext => lowerUrl.endsWith(ext));
+            return videoExtensions.some(ext => (url || '').toLowerCase().endsWith(ext));
         }
 
-        // تحديد نوع ملف الفيديو بدقة لمنحه الـ MIME Type المناسب للمتصفح
+        // نوع MIME المناسب لمتصفحات مختلفة
         function getVideoType(url) {
-            const lowerUrl = url.toLowerCase();
+            const lowerUrl = (url || '').toLowerCase();
             if (lowerUrl.endsWith('.mov')) return 'video/quicktime';
             if (lowerUrl.endsWith('.webm')) return 'video/webm';
             return 'video/mp4';
         }
 
+        // اسم ملف من المسار
+        function fileNameFromPath(path) {
+            const parts = String(path).split('/');
+            return parts[parts.length - 1];
+        }
+
+        // مصغّرة العلامة على الخريطة (صورة أو فيديو)
         function createMediaIcon(mediaUrl) {
-            let htmlContent = '';
+            let htmlContent;
             if (isVideoFile(mediaUrl)) {
                 htmlContent = '<div class="media-marker"><video src="' + mediaUrl + '" muted preload="metadata"></video><div class="video-badge">▶</div></div>';
             } else {
                 htmlContent = '<div class="media-marker"><img src="' + mediaUrl + '" alt="صورة موقع"></div>';
             }
-
             return L.divIcon({
                 className: 'custom-div-icon',
                 html: htmlContent,
@@ -199,20 +218,7 @@
         const markers = [];
         const allMedia = [];
 
-        // استخراج اسم ملف من المسار
-        function fileNameFromPath(path) {
-            const parts = path.split('/');
-            return parts[parts.length - 1];
-        }
-
-        // تحديد وسيلة العرض للبطاقة: صورة أو فيديو
-        function cardThumbnail(mediaPath) {
-            if (isVideoFile(mediaPath)) {
-                return '<video src="' + mediaPath + '" muted preload="metadata"></video>';
-            }
-            return '<img src="' + mediaPath + '" alt="صورة">';
-        }
-
+        // تحميل البيانات من test_payload.json
         fetch('test_payload.json')
             .then(r => r.json())
             .then(data => {
@@ -228,8 +234,6 @@
                         const marker = L.marker([item.lat, item.lng], {
                             icon: createMediaIcon(mediaPath)
                         }).addTo(map);
-
-                        marker.on('click', () => openModal(mediaPath, item.lat, item.lng));
                         marker._media = mediaObj;
                         markers.push(marker);
                     }
@@ -237,20 +241,17 @@
                     document.getElementById('info').textContent = '📷 ' + loaded + ' وسائط';
                 });
 
-                // fit bounds
                 if (markers.length > 0) {
-                    const group = L.featureGroup(markers);
-                    map.fitBounds(group.getBounds().pad(0.15));
+                    map.fitBounds(L.featureGroup(markers).getBounds().pad(0.15));
                 }
-
                 updateSidebar();
             })
-            .catch(error => {
-                console.error('خطأ في تحميل البيانات:', error);
-                document.getElementById('info').textContent = 'خطأ في تحميل البيانات';
+            .catch(err => {
+                console.error('خطأ في تحميل البيانات:', err);
+                document.getElementById('info').textContent = 'تعذر تحميل البيانات';
             });
 
-        // تحديث قائمة الوسائط بحسب نطاق الخريطة الظاهر
+        // تحديث قائمة الوسائط بحسب نطاق الخريطة المرئي
         function updateSidebar() {
             const bounds = map.getBounds();
             const contentDiv = document.getElementById('sidebar-content');
@@ -265,80 +266,74 @@
             visible.forEach(m => {
                 const card = document.createElement('div');
                 card.className = 'media-card';
+                const thumb = isVideoFile(m.path)
+                    ? '<video src="' + m.path + '" muted preload="metadata"></video>'
+                    : '<img src="' + m.path + '" alt="صورة">';
                 const typeLabel = isVideoFile(m.path) ? '🎬 فيديو' : '🖼 صورة';
+
                 card.innerHTML =
-                    '<div class="media-thumb">' + cardThumbnail(m.path) + '</div>' +
+                    thumb +
                     '<div class="media-info">' +
                         '<div class="media-title">' + m.name + '</div>' +
-                        '<div class="media-meta">' + typeLabel +
-                        ' &nbsp;|&nbsp; ' + m.lat.toFixed(4) + ', ' + m.lng.toFixed(4) +
-                        '</div></div>';
+                        '<div class="media-type">' + typeLabel + '</div>' +
+                        '<div class="media-coords">خط العرض: ' + m.lat.toFixed(6) +
+                        ' | خط الطول: ' + m.lng.toFixed(6) + '</div>' +
+                    '</div>';
 
                 card.onclick = () => {
                     const target = markers.find(mk => mk._media === m);
-                    if (target) {
-                        map.flyTo([m.lat, m.lng], Math.max(map.getZoom(), 13));
-                    }
-                    openModal(m.path, m.lat, m.lng);
+                    if (target) map.flyTo([m.lat, m.lng], Math.max(map.getZoom(), 13));
+                    openModal(m);
                 };
 
                 contentDiv.appendChild(card);
             });
         }
 
-        // فتح/إغلاق الشريط الجانبي
+        // فتح/إغلاق القائمة الجانبية
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
+            setTimeout(() => map.invalidateSize(), 300);
         }
 
-        document.getElementById('sidebarBtn').addEventListener('click', toggleSidebar);
-
-        // تحديث القائمة عند تحريك الخريطة
         map.on('moveend', updateSidebar);
 
-        function openModal(mediaSrc, lat, lng) {
-            const modal = document.getElementById('mediaModal');
-            const container = document.getElementById('modalContentContainer');
-            container.innerHTML = '';
+        // فتح العارض الأوسط (صورة أو فيديو)
+        function openModal(item) {
+            const modal = document.getElementById('media-modal');
+            const body = document.getElementById('modal-body');
+            const footer = document.getElementById('modal-footer');
+            body.innerHTML = '';
 
-            if (isVideoFile(mediaSrc)) {
-                const videoEl = document.createElement('video');
-                videoEl.controls = true;
-                videoEl.autoplay = true;
-                videoEl.style.maxWidth = '90vw';
-                videoEl.style.maxHeight = '80vh';
-
-                // إضافة المصدر مع تحديد نوع ملف الـ MOV أو MP4 بدقة
-                const sourceEl = document.createElement('source');
-                sourceEl.src = mediaSrc;
-                sourceEl.type = getVideoType(mediaSrc);
-                videoEl.appendChild(sourceEl);
-
-                // رسالة احتياطية إذا لم يدعم المتصفح تشغيل الملف مباشرة
-                videoEl.innerHTML += "متصفحك لا يدعم تشغيل هذا الفيديو مباشرة.";
-
-                container.appendChild(videoEl);
+            if (isVideoFile(item.path)) {
+                const video = document.createElement('video');
+                video.controls = true; video.autoplay = true;
+                const src = document.createElement('source');
+                src.src = item.path;
+                src.type = getVideoType(item.path);
+                video.appendChild(src);
+                body.appendChild(video);
             } else {
-                const imgEl = document.createElement('img');
-                imgEl.src = mediaSrc;
-                container.appendChild(imgEl);
+                const img = document.createElement('img');
+                img.src = item.path;
+                body.appendChild(img);
             }
 
-            if (typeof lat === 'number') {
-                document.getElementById('modalMeta').innerHTML =
-                    'خط العرض: ' + lat.toFixed(6) + ' &nbsp; | &nbsp; خط الطول: ' + lng.toFixed(6);
-            }
-            modal.classList.add('show');
+            footer.innerHTML = '<b>' + item.name + '</b><br>خط العرض: ' + item.lat.toFixed(6) +
+                ' | خط الطول: ' + item.lng.toFixed(6);
+            modal.classList.add('active');
         }
 
         function closeModal() {
-            const modal = document.getElementById('mediaModal');
-            const container = document.getElementById('modalContentContainer');
-            modal.classList.remove('show');
-            container.innerHTML = '';
+            document.getElementById('media-modal').classList.remove('active');
+            document.getElementById('modal-body').innerHTML = '';
         }
 
-        document.addEventListener('keydown', function(e) {
+        function closeModalOnBackdrop(e) {
+            if (e.target.classList.contains('modal-overlay')) closeModal();
+        }
+
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeModal();
         });
     </script>
