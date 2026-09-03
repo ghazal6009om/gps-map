@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>خريطة الصور والفيديوهات الجغرافية</title>
 
   <!-- Leaflet CSS (محمّل محلياً) -->
@@ -26,6 +26,63 @@
       z-index: 1;
     }
 
+    /* أزرار التحكم العلوية */
+    .top-controls {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 900;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-control {
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid #334155;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-control:hover { background: #1e293b; transform: translateY(-1px); }
+
+    /* قائمة اختيار نوع الخريطة */
+    .map-style-menu { position: relative; }
+
+    .map-dropdown {
+      position: absolute;
+      top: 45px;
+      right: 0;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      width: 160px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    }
+
+    .map-dropdown.show { display: flex; }
+
+    .map-dropdown button {
+      background: transparent;
+      color: #cbd5e1;
+      border: none;
+      padding: 10px 14px;
+      text-align: right;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .map-dropdown button:hover { background: #1e293b; color: #38bdf8; }
+    .map-dropdown button.active { background: #334155; color: #38bdf8; font-weight: bold; }
+
     /* القائمة الجانبية */
     .sidebar {
       position: absolute;
@@ -42,9 +99,7 @@
       flex-direction: column;
     }
 
-    .sidebar.open {
-      right: 0;
-    }
+    .sidebar.open { right: 0; }
 
     .sidebar-header {
       padding: 15px;
@@ -70,7 +125,6 @@
       overflow-y: auto;
     }
 
-    /* كروت القائمة */
     .media-card {
       background: #334155;
       border-radius: 8px;
@@ -94,9 +148,7 @@
       background: #0f172a;
     }
 
-    .media-info {
-      padding: 10px;
-    }
+    .media-info { padding: 10px; }
 
     .media-title {
       font-weight: 600;
@@ -106,26 +158,7 @@
       margin-bottom: 4px;
     }
 
-    .media-coords {
-      font-size: 11px;
-      color: #94a3b8;
-    }
-
-    .toggle-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      z-index: 900;
-      background: #0f172a;
-      color: #fff;
-      border: 1px solid #334155;
-      padding: 10px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      font-size: 14px;
-    }
-    .toggle-btn:hover { background: #1e293b; }
+    .media-coords { font-size: 11px; color: #94a3b8; }
 
     /* علامات الصور على الخريطة */
     .photo-marker {
@@ -145,13 +178,7 @@
       display: block;
     }
 
-    .sat-btn {
-      top: 64px;
-      right: 15px;
-      left: auto;
-    }
-
-    /* عارض الصور (Modal) - معزول في الأعلى بدقة */
+    /* النافذة المنبثقة (Modal) */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -166,9 +193,7 @@
       padding: 20px;
     }
 
-    .modal-overlay.active {
-      display: flex !important;
-    }
+    .modal-overlay.active { display: flex !important; }
 
     .modal-content {
       position: relative;
@@ -215,13 +240,75 @@
       font-size: 18px;
       z-index: 100000;
     }
+
+    /* =================================================== */
+    /* استجابة الهواتف والأجهزة الذكية الصغيرة */
+    /* =================================================== */
+    @media (max-width: 600px) {
+      .sidebar {
+        width: 85vw;
+        right: -85vw;
+      }
+
+      .sidebar.open {
+        right: 0;
+      }
+
+      .top-controls {
+        top: 10px;
+        right: 10px;
+        gap: 6px;
+      }
+
+      .btn-control {
+        padding: 8px 10px;
+        font-size: 11px;
+        border-radius: 6px;
+      }
+
+      .media-card img {
+        height: 110px;
+      }
+
+      .media-title {
+        font-size: 12px;
+      }
+
+      .media-coords {
+        font-size: 10px;
+      }
+
+      .modal-content {
+        max-width: 95vw;
+        max-height: 85vh;
+      }
+
+      .modal-content img {
+        max-height: 65vh;
+      }
+
+      .modal-footer {
+        font-size: 11px;
+        padding: 8px 12px;
+      }
+    }
   </style>
 </head>
 <body>
 
   <div id="map-container">
-    <button class="toggle-btn" onclick="toggleSidebar()">📁 الوسائط في هذا النطاق</button>
-    <button id="sat-btn" class="toggle-btn sat-btn" onclick="toggleSatellite()">🛰 ساتلايت</button>
+    <div class="top-controls">
+      <button class="btn-control" onclick="toggleSidebar()">📁 الوسائط</button>
+
+      <div class="map-style-menu">
+        <button class="btn-control" onclick="toggleMapDropdown(event)">🗺️ نوع الخريطة</button>
+        <div id="map-dropdown" class="map-dropdown">
+          <button id="btn-satellite" class="active" onclick="changeTileLayer('satellite')">🛰️ ساتلايت (Esri)</button>
+          <button id="btn-google" onclick="changeTileLayer('google')">🗺️ خرائط جوجل</button>
+          <button id="btn-osm" onclick="changeTileLayer('osm')">🌐 OpenStreetMap</button>
+        </div>
+      </div>
+    </div>
 
     <div id="map"></div>
 
@@ -231,12 +318,11 @@
         <button class="close-btn" onclick="toggleSidebar()">✕</button>
       </div>
       <div id="sidebar-content" class="sidebar-content">
-        <p style="color: #94a3b8; text-align: center;">جارٍ تحميل الوسائط...</p>
+        <p style="color: #94a3b8; text-align: center;">جارٍ تحميل البيانات...</p>
       </div>
     </div>
   </div>
 
-  <!-- النافذة المنبثقة للصور -->
   <div id="photo-modal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeModal()">✕</button>
@@ -251,31 +337,49 @@
   <script>
     const map = L.map('map').setView([17.226842, 54.160492], 13);
 
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    });
+    const tileLayers = {
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri'
+      }),
+      google: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; Google Maps'
+      }),
+      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      })
+    };
 
-    const googleMapsLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-      attribution: '&copy; Google Maps'
-    });
+    let currentTileLayer = tileLayers.satellite;
+    currentTileLayer.addTo(map);
 
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: '&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
-    });
+    function changeTileLayer(type) {
+      if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+      }
+      currentTileLayer = tileLayers[type];
+      currentTileLayer.addTo(map);
 
-    const layers = [streetLayer, googleMapsLayer, satelliteLayer];
-    const layerLabels = ['🛰 ساتلايت', '🗺 جوجل ماب', '🗺 الخريطة'];
-    let layerIndex = 0;
-    streetLayer.addTo(map);
-    const satBtn = document.getElementById('sat-btn');
-
-    // تبديل بين طبقات الخريطة: عادية → جوجل ماب → ساتلايت
-    function toggleSatellite() {
-      map.removeLayer(layers[layerIndex]);
-      layerIndex = (layerIndex + 1) % layers.length;
-      layers[layerIndex].addTo(map);
-      satBtn.textContent = layerLabels[layerIndex];
+      document.querySelectorAll('.map-dropdown button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('btn-' + type).classList.add('active');
+      document.getElementById('map-dropdown').classList.remove('show');
     }
+
+    function toggleMapDropdown(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('map-dropdown').classList.toggle('show');
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.map-style-menu')) {
+        document.getElementById('map-dropdown').classList.remove('show');
+      }
+    });
+
+    map.on('click', () => {
+      document.getElementById('map-dropdown').classList.remove('show');
+    });
 
     let mediaData = [];
 
@@ -284,7 +388,6 @@
       return item.path || item.img || item.url || item.src || item.image_path || item.file || item.image || '';
     }
 
-    // جلب ملف JSON
     fetch('test_payload.json')
       .then(res => {
         if (!res.ok) throw new Error("تعذر جلب ملف JSON");
@@ -297,7 +400,7 @@
       })
       .catch(err => {
         console.error("خطأ:", err);
-        document.getElementById('sidebar-content').innerHTML = '<p style="color: #ef4444; text-align: center;">خطأ في تحميل ملف البيانات test_payload.json</p>';
+        document.getElementById('sidebar-content').innerHTML = '<p style="color: #ef4444; text-align: center;">خطأ في تحميل البيانات</p>';
       });
 
     function initMarkers() {
@@ -346,7 +449,6 @@
           </div>
         `;
 
-        // إيقاف تسلسل الحدث وتوجيه الخريطة وفتح النافذة
         card.addEventListener('click', (e) => {
           e.stopPropagation();
           map.flyTo([item.lat, item.lng], 16, { animate: true });
