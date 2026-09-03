@@ -209,7 +209,8 @@
       border: 1px solid #334155;
     }
 
-    .modal-content img {
+    .modal-content img,
+    .modal-content video {
       max-width: 100%;
       max-height: 75vh;
       object-fit: contain;
@@ -320,7 +321,8 @@
         max-height: 85vh;
       }
 
-      .modal-content img {
+      .modal-content img,
+      .modal-content video {
         max-height: 65vh;
       }
 
@@ -363,7 +365,6 @@
   <div id="photo-modal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeModal()">✕</button>
-      <img id="modal-img" src="" alt="معاينة الصورة">
       <div id="modal-footer" class="modal-footer"></div>
     </div>
   </div>
@@ -446,10 +447,14 @@
       mediaData.forEach(item => {
         if (item.lat && item.lng) {
           const src = getMediaSrc(item) || '';
+          const isVideo = isVideoFile(item);
           const icon = L.divIcon({
             className: '',
-            html: '<div class="photo-marker"><img src="' + src +
-                  '" alt="" onerror="this.outerHTML=String.fromCharCode(128247)"></div>',
+            html: '<div class="photo-marker">' +
+                  (isVideo
+                    ? '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;">🎥</div>'
+                    : '<img src="' + src + '" alt="" onerror="this.outerHTML=String.fromCharCode(128247)">') +
+                  '</div>',
             iconSize: [40, 40],
             iconAnchor: [20, 20]
           });
@@ -460,6 +465,18 @@
           });
         }
       });
+    }
+
+    // الدالة المساعدة لمعرفة هل الملف فيديو أم صورة
+    function isVideoFile(item) {
+      const src = getMediaSrc(item).toLowerCase();
+      const type = (item.type || item.media_type || '').toLowerCase();
+
+      return type.includes('video') ||
+             src.endsWith('.mp4') ||
+             src.endsWith('.mov') ||
+             src.endsWith('.webm') ||
+             src.endsWith('.m4v');
     }
 
     function updateSidebarMedia() {
@@ -478,10 +495,20 @@
 
       visibleMedia.forEach(item => {
         const imgSrc = getMediaSrc(item);
+        const isVideo = isVideoFile(item);
+
         const card = document.createElement('div');
         card.className = 'media-card';
+        card.style.position = 'relative'; // لضبط شارة التمييز
+
         card.innerHTML = `
-          <img src="${imgSrc}" alt="${item.name || 'صورة'}" onerror="this.src='https://via.placeholder.com/300x150?text=Image+NotFound'">
+          <div style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; z-index: 2;">
+            ${isVideo ? '🎥 فيديو' : '📷 صورة'}
+          </div>
+          ${isVideo
+            ? `<video src="${imgSrc}#t=0.5" preload="metadata" style="width:100%; height:140px; object-fit:cover; display:block; background:#0f172a;"></video>`
+            : `<img src="${imgSrc}" alt="${item.name || 'صورة'}" onerror="this.src='https://via.placeholder.com/300x150?text=Image+NotFound'">`
+          }
           <div class="media-info">
             <div class="media-title">${item.name || 'وسائط جغرافية'}</div>
             <div class="media-coords">عرض: ${Number(item.lat).toFixed(4)} | طول: ${Number(item.lng).toFixed(4)}</div>
@@ -512,16 +539,57 @@
 
     function openModal(item) {
       const modal = document.getElementById('photo-modal');
-      const modalImg = document.getElementById('modal-img');
+      const modalContent = document.querySelector('.modal-content');
       const modalFooter = document.getElementById('modal-footer');
 
       const imgSrc = getMediaSrc(item);
-      modalImg.src = imgSrc;
-      modalFooter.innerHTML = `<b>${item.name || ''}</b><br>خط العرض: ${item.lat} | خط الطول: ${item.lng}`;
+      const isVideo = isVideoFile(item);
+
+      // إزالة أي عنصر معروض سابقاً (صورة أو فيديو)
+      const oldMedia = document.getElementById('modal-media');
+      if (oldMedia) oldMedia.remove();
+
+      // إنشاء العنصر المناسب (Video أو Img)
+      let mediaElement;
+      if (isVideo) {
+        mediaElement = document.createElement('video');
+        mediaElement.id = 'modal-media';
+        mediaElement.src = imgSrc;
+        mediaElement.controls = true;
+        mediaElement.autoplay = true;
+        mediaElement.style.maxWidth = '100%';
+        mediaElement.style.maxHeight = '75vh';
+      } else {
+        mediaElement = document.createElement('img');
+        mediaElement.id = 'modal-media';
+        mediaElement.src = imgSrc;
+        mediaElement.alt = item.name || 'معاينة';
+        mediaElement.style.maxWidth = '100%';
+        mediaElement.style.maxHeight = '75vh';
+        mediaElement.onerror = function () {
+          this.onerror = null;
+          this.src = 'https://via.placeholder.com/600x400?text=Image+NotFound';
+        };
+      }
+
+      // إدراج العنصر قبل الفوتر
+      modalContent.insertBefore(mediaElement, modalFooter);
+
+      modalFooter.innerHTML = `
+        <b>${isVideo ? '🎥 فيديو' : '📷 صورة'}: ${item.name || ''}</b><br>
+        خط العرض: ${item.lat} | خط الطول: ${item.lng}
+      `;
+
       modal.classList.add('active');
     }
 
     function closeModal() {
+      // إيقاف أي فيديو يعمل وإزالة الوسيط
+      const media = document.getElementById('modal-media');
+      if (media) {
+        if (media.tagName === 'VIDEO') media.pause();
+        media.remove();
+      }
       document.getElementById('photo-modal').classList.remove('active');
     }
 
