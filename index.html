@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>خريطة الصور والفيديوهات الجغرافية</title>
   
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="css/leaflet.css" />
+  <!-- مكتبة قراءة بيانات EXIF الجغرافية من الصور -->
+  <script src="js/exif.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -226,6 +229,7 @@
       <div class="upload-form-group">
         <label>اختر الملف (صورة أو فيديو):</label>
         <input type="file" id="upload-file-input" accept="image/*,video/*" onchange="handleFileSelect(event)">
+        <div id="gps-status-text" style="font-size: 11px; color: #38bdf8; margin-top: 4px;"></div>
       </div>
 
       <div class="upload-form-group">
@@ -242,6 +246,12 @@
           <label>خط الطول (Lng):</label>
           <input type="number" step="any" id="upload-lng" placeholder="54.1604">
         </div>
+      </div>
+
+      <!-- أزرار تحديد الإحداثيات (يدوي / موقعك الحالي) -->
+      <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <button type="button" onclick="enableMapPickLocation()" style="flex:1; padding: 6px; background: #334155; color: #38bdf8; border: 1px solid #0284c7; border-radius: 6px; font-size: 11px; cursor: pointer;">📍 تحديد يدوياً من الخريطة</button>
+        <button type="button" onclick="useCurrentLocation()" style="flex:1; padding: 6px; background: #334155; color: #4ade80; border: 1px solid #16a34a; border-radius: 6px; font-size: 11px; cursor: pointer;">🧭 موقعي الحالي</button>
       </div>
 
       <button type="button" class="upload-btn-submit" onclick="submitNewMedia()">إضافة الوسائط للخريطة 🚀</button>
@@ -288,7 +298,6 @@
 
     function openUploadModal() {
       if (!isAdminLoggedIn) return;
-      // تلقائياً وضع إحداثيات مركز الخريطة الافتراضي
       const center = map.getCenter();
       document.getElementById('upload-lat').value = center.lat.toFixed(6);
       document.getElementById('upload-lng').value = center.lng.toFixed(6);
@@ -303,12 +312,75 @@
 
     function handleFileSelect(e) {
       const file = e.target.files[0];
-      if (file) {
-        selectedFileUrl = URL.createObjectURL(file);
-        selectedFileType = file.type.includes('video') ? 'video' : 'image';
-        if (!document.getElementById('upload-title').value) {
-          document.getElementById('upload-title').value = file.name;
-        }
+      const statusText = document.getElementById('gps-status-text');
+      
+      if (!file) return;
+
+      selectedFileUrl = URL.createObjectURL(file);
+      selectedFileType = file.type.includes('video') ? 'video' : 'image';
+      
+      if (!document.getElementById('upload-title').value) {
+        document.getElementById('upload-title').value = file.name;
+      }
+
+      if (selectedFileType === 'image' && typeof EXIF !== 'undefined') {
+        statusText.innerText = "⏳ جاري قراءة إحداثيات الصورة تلقائياً...";
+        statusText.style.color = "#38bdf8";
+        
+        EXIF.getData(file, function() {
+          const lat = EXIF.getTag(this, 'GPSLatitude');
+          const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
+          const lng = EXIF.getTag(this, 'GPSLongitude');
+          const lngRef = EXIF.getTag(this, 'GPSLongitudeRef');
+
+          if (lat && lng) {
+            const decLat = convertDMSToDD(lat[0], lat[1], lat[2], latRef);
+            const decLng = convertDMSToDD(lng[0], lng[1], lng[2], lngRef);
+
+            document.getElementById('upload-lat').value = decLat.toFixed(6);
+            document.getElementById('upload-lng').value = decLng.toFixed(6);
+            statusText.innerText = "✅ تم استخراج إحداثيات الصورة تلقائياً!";
+            statusText.style.color = "#4ade80";
+          } else {
+            statusText.innerText = "⚠️ لم يتم العثور على إحداثيات مخزنة بالصورة. يمكنك التحديد يدوياً.";
+            statusText.style.color = "#fbbf24";
+          }
+        });
+      } else {
+        statusText.innerText = "";
+      }
+    }
+
+    function convertDMSToDD(degrees, minutes, seconds, direction) {
+      let dd = degrees + (minutes / 60) + (seconds / 3600);
+      if (direction === "S" || direction === "W") dd = dd * -1;
+      return dd;
+    }
+
+    function enableMapPickLocation() {
+      closeUploadModal();
+      alert("قم بالنقر على المكان المحدد في الخريطة لتعبئة الإحداثيات تلقائياً.");
+      
+      const onMapClick = function(e) {
+        document.getElementById('upload-lat').value = e.latlng.lat.toFixed(6);
+        document.getElementById('upload-lng').value = e.latlng.lng.toFixed(6);
+        
+        map.off('click', onMapClick);
+        document.getElementById('upload-modal').classList.add('active');
+      };
+
+      map.once('click', onMapClick);
+    }
+
+    function useCurrentLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          document.getElementById('upload-lat').value = position.coords.latitude.toFixed(6);
+          document.getElementById('upload-lng').value = position.coords.longitude.toFixed(6);
+          alert("تمت تعبئة الموقع الحالي بنجاح!");
+        }, () => {
+          alert("تعذر الوصول لموقعك الحالي. يرجى تفعيل الـ GPS في الجوال.");
+        });
       }
     }
 
@@ -341,7 +413,7 @@
       map.flyTo([lat, lng], 16);
       closeUploadModal();
 
-      alert("تمت إضافة الوسائط بنجاح للواجهة الحالية! يمكنك نسخ ملف JSON الجديد بالضغط على أزرار التعديل.");
+      alert("تمت إضافة الوسائط بنجاح للواجهة الحالية!");
     }
 
     const map = L.map('map').setView([17.226842, 54.160492], 13);
