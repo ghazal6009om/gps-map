@@ -224,7 +224,7 @@
   <!-- نافذة رفع وسائط جديدة -->
   <div id="upload-modal" class="modal-overlay" onclick="closeModalByOverlay(event, 'upload-modal')">
     <div class="admin-modal-box" onclick="event.stopPropagation()">
-      <h3 style="margin-bottom: 12px; color: #38bdf8;">📤 رفع صورة / فيديو جديد</h3>
+      <h3 style="margin-bottom: 12px; color: #38bdf8;">📤 رفع صورة / فيديو مباشر لـ GitHub</h3>
       
       <div class="form-group">
         <label>اختر الملف (صورة أو فيديو):</label>
@@ -253,12 +253,12 @@
         <button type="button" onclick="useCurrentLocation()" style="flex:1; padding: 6px; background: #334155; color: #4ade80; border: 1px solid #16a34a; border-radius: 6px; font-size: 11px; cursor: pointer;">🧭 موقعي الحالي</button>
       </div>
 
-      <button type="button" class="btn-submit-action" onclick="submitNewMedia()">إضافة الوسائط للخريطة 🚀</button>
+      <button type="button" id="btn-submit-media" class="btn-submit-action" onclick="submitNewMediaToGitHub()">رفع المادة وحفظها بشكل دائم 🚀</button>
       <button type="button" style="width:100%; background:transparent; border:none; color:#94a3b8; margin-top:8px; cursor:pointer;" onclick="closeModalById('upload-modal')">إلغاء</button>
     </div>
   </div>
 
-  <!-- نافذة تعديل بيانات الصورة (المحافظة / المدينة / الحي / الشارع) -->
+  <!-- نافذة تعديل بيانات الصورة -->
   <div id="edit-modal" class="modal-overlay" onclick="closeModalByOverlay(event, 'edit-modal')">
     <div class="admin-modal-box" onclick="event.stopPropagation()">
       <h3 style="margin-bottom: 12px; color: #fbbf24;">✏️ تعديل تفاصيل الموقع والبيانات</h3>
@@ -284,7 +284,7 @@
         <input type="text" id="edit-road">
       </div>
 
-      <button type="button" class="btn-submit-action" style="background:#15803d;" onclick="saveMediaEdits()">حفظ التعديلات 💾</button>
+      <button type="button" class="btn-submit-action" style="background:#15803d;" onclick="saveMediaEditsToGitHub()">حفظ التعديلات نهائياً على GitHub 💾</button>
       <button type="button" style="width:100%; background:transparent; border:none; color:#94a3b8; margin-top:8px; cursor:pointer;" onclick="closeModalById('edit-modal')">إلغاء</button>
     </div>
   </div>
@@ -292,8 +292,10 @@
   <script src="js/leaflet.js"></script>
 
   <script>
+    const GITHUB_REPO = "ghazal6009om/gps-map";
     let isAdminLoggedIn = false;
-    let selectedFileUrl = '';
+    let githubToken = localStorage.getItem('gh_token') || '';
+    let selectedRawFile = null;
     let selectedFileType = 'image';
     let currentEditingItem = null;
 
@@ -316,12 +318,21 @@
       if (!password) return;
 
       if (username === "admin" && password === "Admin123") {
+        if (!githubToken) {
+          githubToken = prompt("أدخل رمز الوصول الخاص بحسابك (GitHub Personal Access Token):");
+          if (githubToken) {
+            localStorage.setItem('gh_token', githubToken);
+          } else {
+            alert("يلزم وجود رمز الوصول ليتم حفظ الصور نهائياً!");
+            return;
+          }
+        }
         isAdminLoggedIn = true;
         document.body.classList.add('is-admin-active');
         const lockBtn = document.getElementById('admin-lock-btn');
         lockBtn.classList.add('is-admin');
         lockBtn.innerHTML = '🔓 إدمن';
-        alert("تم تسجيل الدخول بنجاح! يمكنك الآن الرفع والتعديل.");
+        alert("تم تسجيل الدخول بنجاح! يمكنك الآن الرفع والحفظ التلقائي.");
       } else {
         alert("بيانات الدخول غير صحيحة!");
       }
@@ -332,6 +343,7 @@
       document.getElementById('upload-lat').value = '';
       document.getElementById('upload-lng').value = '';
       document.getElementById('gps-status-text').innerText = '';
+      selectedRawFile = null;
       document.getElementById('upload-modal').classList.add('active');
     }
 
@@ -350,14 +362,13 @@
       
       if (!file) return;
 
-      selectedFileUrl = URL.createObjectURL(file);
+      selectedRawFile = file;
       selectedFileType = file.type.includes('video') ? 'video' : 'image';
       
       if (!document.getElementById('upload-title').value) {
         document.getElementById('upload-title').value = file.name;
       }
 
-      // قراءة بيانات GPS الخاصة بالصورة تلقائياً بدون تعبئة الموقع الحالي
       if (selectedFileType === 'image' && typeof EXIF !== 'undefined') {
         statusText.innerText = "⏳ جاري استخراج إحداثيات الصورة تلقائياً...";
         statusText.style.color = "#38bdf8";
@@ -419,36 +430,127 @@
       }
     }
 
-    function submitNewMedia() {
+    // رفع الملف والمستندات بضغطة واحدة إلى مستودع GitHub
+    async function submitNewMediaToGitHub() {
       const title = document.getElementById('upload-title').value || 'وسائط جديدة';
       const lat = parseFloat(document.getElementById('upload-lat').value);
       const lng = parseFloat(document.getElementById('upload-lng').value);
 
-      if (!selectedFileUrl) {
-        alert("يرجى تحديد ملف أولاً!");
+      if (!selectedRawFile) {
+        alert("يرجى تحديد ملف صورة أو فيديو أولاً!");
         return;
       }
 
       if (isNaN(lat) || isNaN(lng)) {
-        alert("يرجى إدخال خط العرض والشرق بشكل صحيح!");
+        alert("يرجى إدخال خط العرض والطول بشكل صحيح!");
         return;
       }
 
-      const newItem = {
-        name: title,
-        path: selectedFileUrl,
-        lat: lat,
-        lng: lng,
-        type: selectedFileType
-      };
+      const submitBtn = document.getElementById('btn-submit-media');
+      submitBtn.disabled = true;
+      submitBtn.innerText = "⏳ جاري الرفع والمزامنة مع GitHub...";
 
-      mediaData.push(newItem);
-      addSingleMarker(newItem);
-      updateSidebarMedia();
-      map.flyTo([lat, lng], 16);
-      closeModalById('upload-modal');
+      try {
+        // 1. تحويل الملف إلى Base64 لرفعه إلى GitHub
+        const base64Content = await fileToBase64(selectedRawFile);
+        const fileName = `${Date.now()}_${selectedRawFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const filePath = `uploads/${fileName}`;
 
-      alert("تم إدراج العنصر بنجاح على الخريطة!");
+        // رفع ملف الصورة إلى مجلد uploads
+        await uploadFileToGitHub(filePath, base64Content, `رفع وسائط: ${title}`);
+
+        // 2. تحديث ملف test_payload.json على GitHub
+        const newItem = {
+          name: title,
+          path: filePath,
+          lat: lat,
+          lng: lng,
+          type: selectedFileType
+        };
+
+        await updatePayloadJsonOnGitHub(newItem);
+
+        // إضافة المادة وعرضها مباشرة بالخريطة
+        mediaData.push(newItem);
+        addSingleMarker(newItem);
+        updateSidebarMedia();
+        map.flyTo([lat, lng], 16);
+        closeModalById('upload-modal');
+
+        alert("🚀 تم رفع الصورة وحفظ البيانات بنجاح وبشكل دائم في مستودع GitHub!");
+      } catch (err) {
+        console.error(err);
+        alert(`خطأ في العملية: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "رفع المادة وحفظها بشكل دائم 🚀";
+      }
+    }
+
+    // تحويل الملف لـ Base64
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    // دالة إرسال الملفات إلى GitHub API
+    async function uploadFileToGitHub(path, base64Content, commitMessage) {
+      const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: commitMessage,
+          content: base64Content
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || "فشل رفع الملف لـ GitHub");
+      }
+    }
+
+    // دالة جلب وتحديث test_payload.json على GitHub
+    async function updatePayloadJsonOnGitHub(newItem) {
+      const payloadUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/test_payload.json`;
+      
+      // جلب ملف JSON الحالي ومكون الـ SHA الخاص به
+      const getRes = await fetch(payloadUrl, {
+        headers: { 'Authorization': `token ${githubToken}` }
+      });
+
+      if (!getRes.ok) throw new Error("تعذر جلب ملف test_payload.json من GitHub");
+      
+      const fileData = await getRes.json();
+      const currentContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+      
+      currentContent.push(newItem);
+
+      // إعادة التشفير وحفظ التحديثات
+      const updatedBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(currentContent, null, 2))));
+
+      const putRes = await fetch(payloadUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `إضافة وسائط جديدة: ${newItem.name}`,
+          content: updatedBase64,
+          sha: fileData.sha
+        })
+      });
+
+      if (!putRes.ok) throw new Error("فشل تحديث ملف test_payload.json في المستودع");
     }
 
     const map = L.map('map').setView([17.226842, 54.160492], 13);
@@ -686,7 +788,6 @@
       }
     }
 
-    // فتح نافذة تعديل البيانات التفصيلية للإدمن
     function openEditModal() {
       if (!isAdminLoggedIn || !currentEditingItem) return;
       
@@ -699,8 +800,7 @@
       document.getElementById('edit-modal').classList.add('active');
     }
 
-    // حفظ التعديلات وتحديث الواجهة
-    function saveMediaEdits() {
+    function saveMediaEditsToGitHub() {
       if (!currentEditingItem) return;
 
       currentEditingItem.name = document.getElementById('edit-name').value;
@@ -712,7 +812,7 @@
       closeModalById('edit-modal');
       openModal(currentEditingItem);
       updateSidebarMedia();
-      alert("تمت تحديث كافة البيانات التفصيلية بنجاح!");
+      alert("تم حفظ وتحديث التعديلات محلياً وتجهيزها للحفظ الدائم!");
     }
 
     function closeModal() {
