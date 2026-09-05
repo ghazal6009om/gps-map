@@ -484,20 +484,53 @@
     // دالة تحويل الإحداثيات إلى (المحافظة / المدينة / المنطقة / الشارع) تلقائيًا
     async function fetchAddress(lat, lng) {
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ar`);
+        // جلب البيانات بطلب أعلى دقة
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ar`);
         if (!response.ok) return null;
 
         const data = await response.json();
         const address = data.address || {};
 
-        const governorate = address.state || address.region || address.province || address.governorate || 'غير محددة';
-        const city = address.city || address.town || address.village || address.municipality || 'غير محددة';
-        const district = address.suburb || address.neighbourhood || address.quarter || address.residential || address.amenity || 'غير محددة';
-        const road = address.road || address.pedestrian || address.highway || 'شارع غير مسمى';
+        // 1. المحافظة / الولاية
+        const governorate = address.state || address.region || address.province || address.governorate || address.country || 'غير محددة';
 
-        return { governorate, city, district, road };
+        // 2. المدينة / الولاية الفرعية / القرية
+        const city = address.city || address.town || address.village || address.municipality || address.county || 'غير محددة';
+
+        // 3. المنطقة / الحي / المجمع (مع وسوم بديلة متعددة)
+        const district = address.suburb ||
+                         address.neighbourhood ||
+                         address.quarter ||
+                         address.residential ||
+                         address.hamlet ||
+                         address.subdivision ||
+                         address.commercial ||
+                         address.amenity ||
+                         'غير محددة';
+
+        // 4. الشارع / الطريق / المعلم القريب
+        let road = address.road ||
+                   address.pedestrian ||
+                   address.highway ||
+                   address.path ||
+                   address.square ||
+                   address.tourism ||
+                   address.building;
+
+        // في حال عدم وجود اسم الشارع، يستخرج اسم الأطراف القريبة من النص الكامل
+        if (!road && data.display_name) {
+          const parts = data.display_name.split(',');
+          if (parts.length > 0) road = parts[0].trim();
+        }
+
+        return {
+          governorate,
+          city,
+          district,
+          road: road || 'طريق فرعي'
+        };
       } catch (error) {
-        console.error("خطأ العناوين:", error);
+        console.error("خطأ جلب التفاصيل الجغرافية:", error);
         return null;
       }
     }
