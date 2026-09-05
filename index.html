@@ -160,14 +160,32 @@
     .form-group input { width: 100%; padding: 8px 10px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 13px; }
     .btn-submit-action { width: 100%; padding: 10px; background: #0284c7; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; }
 
+    /* أزرار الإدمن داخل نافذة العرض */
+    .admin-controls-wrapper {
+      display: none;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .is-admin-active .admin-controls-wrapper { display: flex; }
+
+    .admin-btn {
+      flex: 1;
+      padding: 6px 12px;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .admin-edit-btn { background: #d97706; }
+    .admin-delete-btn { background: #dc2626; }
+
     /* العلامات المصغرة على الخريطة */
     .custom-photo-marker { position: relative; width: 44px; height: 44px; border-radius: 10px; border: 2px solid #ffffff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); background: #0f172a; overflow: hidden; cursor: pointer; }
     .custom-photo-marker img, .custom-photo-marker video { width: 100%; height: 100%; object-fit: cover; }
     .marker-play-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .marker-play-badge::after { content: ''; display: block; width: 0; height: 0; border-style: solid; border-width: 4px 0 4px 7px; border-color: transparent transparent transparent #ffffff; margin-left: 1px; }
-
-    .admin-edit-btn { display: none; margin-top: 8px; padding: 6px 12px; background: #e11d48; color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer; }
-    .is-admin-active .admin-edit-btn { display: inline-block; }
 
     @media (max-width: 600px) {
       .sidebar { top: auto; bottom: -55vh; right: 0; left: 0; width: 100% !important; height: 55vh; border-radius: 16px 16px 0 0; }
@@ -298,6 +316,7 @@
     let selectedRawFile = null;
     let selectedFileType = 'image';
     let currentEditingItem = null;
+    let mapMarkers = [];
 
     function handleAdminLogin() {
       if (isAdminLoggedIn) {
@@ -323,7 +342,7 @@
           if (githubToken) {
             localStorage.setItem('gh_token', githubToken);
           } else {
-            alert("يلزم وجود رمز الوصول ليتم حفظ الصور نهائياً!");
+            alert("يلزم وجود رمز الوصول ليتم الرفع والحذف نهائياً!");
             return;
           }
         }
@@ -332,7 +351,7 @@
         const lockBtn = document.getElementById('admin-lock-btn');
         lockBtn.classList.add('is-admin');
         lockBtn.innerHTML = '🔓 إدمن';
-        alert("تم تسجيل الدخول بنجاح! يمكنك الآن الرفع والحفظ التلقائي.");
+        alert("تم تسجيل الدخول بنجاح! يمكنك الآن الرفع والتعديل والحذف.");
       } else {
         alert("بيانات الدخول غير صحيحة!");
       }
@@ -355,7 +374,6 @@
       closeModalById(id);
     }
 
-    // قراءة إحداثيات الصورة تلقائياً عند الاختيار
     function handleFileSelect(e) {
       const file = e.target.files[0];
       const statusText = document.getElementById('gps-status-text');
@@ -430,7 +448,6 @@
       }
     }
 
-    // رفع الملف والمستندات بضغطة واحدة إلى مستودع GitHub
     async function submitNewMediaToGitHub() {
       const title = document.getElementById('upload-title').value || 'وسائط جديدة';
       const lat = parseFloat(document.getElementById('upload-lat').value);
@@ -451,15 +468,12 @@
       submitBtn.innerText = "⏳ جاري الرفع والمزامنة مع GitHub...";
 
       try {
-        // 1. تحويل الملف إلى Base64 لرفعه إلى GitHub
         const base64Content = await fileToBase64(selectedRawFile);
         const fileName = `${Date.now()}_${selectedRawFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const filePath = `uploads/${fileName}`;
 
-        // رفع ملف الصورة إلى مجلد uploads
         await uploadFileToGitHub(filePath, base64Content, `رفع وسائط: ${title}`);
 
-        // 2. تحديث ملف test_payload.json على GitHub
         const newItem = {
           name: title,
           path: filePath,
@@ -470,7 +484,6 @@
 
         await updatePayloadJsonOnGitHub(newItem);
 
-        // إضافة المادة وعرضها مباشرة بالخريطة
         mediaData.push(newItem);
         addSingleMarker(newItem);
         updateSidebarMedia();
@@ -487,7 +500,6 @@
       }
     }
 
-    // تحويل الملف لـ Base64
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -497,7 +509,6 @@
       });
     }
 
-    // دالة إرسال الملفات إلى GitHub API
     async function uploadFileToGitHub(path, base64Content, commitMessage) {
       const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
       const response = await fetch(url, {
@@ -518,11 +529,9 @@
       }
     }
 
-    // دالة جلب وتحديث test_payload.json على GitHub
     async function updatePayloadJsonOnGitHub(newItem) {
       const payloadUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/test_payload.json`;
       
-      // جلب ملف JSON الحالي ومكون الـ SHA الخاص به
       const getRes = await fetch(payloadUrl, {
         headers: { 'Authorization': `token ${githubToken}` }
       });
@@ -534,7 +543,6 @@
       
       currentContent.push(newItem);
 
-      // إعادة التشفير وحفظ التحديثات
       const updatedBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(currentContent, null, 2))));
 
       const putRes = await fetch(payloadUrl, {
@@ -551,6 +559,83 @@
       });
 
       if (!putRes.ok) throw new Error("فشل تحديث ملف test_payload.json في المستودع");
+    }
+
+    // دالة حذف الصورة / الفيديو نهائياً من GitHub والخريطة
+    async function deleteMediaItemFromGitHub() {
+      if (!currentEditingItem || !isAdminLoggedIn) return;
+
+      if (!confirm(`هل أنت تأكد من رغبتك في حذف "${currentEditingItem.name}" نهائياً من الخريطة ومستودع GitHub؟`)) return;
+
+      try {
+        const filePath = getMediaSrc(currentEditingItem);
+
+        // 1. حذف الملف الأصلي من المستودع إذا كان مخزناً داخل uploads
+        if (filePath.startsWith('uploads/')) {
+          const fileUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
+          const getFileRes = await fetch(fileUrl, { headers: { 'Authorization': `token ${githubToken}` } });
+          
+          if (getFileRes.ok) {
+            const fileInfo = await getFileRes.json();
+            await fetch(fileUrl, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `token ${githubToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                message: `حذف الملف: ${filePath}`,
+                sha: fileInfo.sha
+              })
+            });
+          }
+        }
+
+        // 2. إزالة العنصر من ملف test_payload.json على GitHub
+        const payloadUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/test_payload.json`;
+        const getPayloadRes = await fetch(payloadUrl, { headers: { 'Authorization': `token ${githubToken}` } });
+        
+        if (getPayloadRes.ok) {
+          const fileData = await getPayloadRes.json();
+          let currentContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+
+          // تصفية المصفوفة وحذف العنصر المماثل
+          currentContent = currentContent.filter(item => {
+            return !(item.name === currentEditingItem.name && item.lat === currentEditingItem.lat && item.lng === currentEditingItem.lng);
+          });
+
+          const updatedBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(currentContent, null, 2))));
+
+          await fetch(payloadUrl, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${githubToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `حذف وسائط: ${currentEditingItem.name}`,
+              content: updatedBase64,
+              sha: fileData.sha
+            })
+          });
+        }
+
+        // 3. تحديث مصفوفة الوسائط وإزالة الماركر محلياً فوراً
+        mediaData = mediaData.filter(item => item !== currentEditingItem);
+
+        // مسح كل العلامات وإعادة رسم العلامات المتبقية
+        mapMarkers.forEach(m => map.removeLayer(m));
+        mapMarkers = [];
+        initMarkers();
+        updateSidebarMedia();
+        closeModal();
+
+        alert("🗑️ تم حذف الوسائط بنجاح ومزامنة التعديلات على GitHub!");
+
+      } catch (err) {
+        console.error(err);
+        alert(`خطأ أثناء عملية الحذف: ${err.message}`);
+      }
     }
 
     const map = L.map('map').setView([17.226842, 54.160492], 13);
@@ -669,6 +754,8 @@
           L.DomEvent.stopPropagation(e);
           openModal(item);
         });
+
+        mapMarkers.push(marker);
       }
     }
 
@@ -782,7 +869,10 @@
               <div>🏡 <b>المنطقة/الحي:</b> ${item.district}</div>
               <div>🛣️ <b>الشارع:</b> ${item.road}</div>
             </div>
-            <button class="admin-edit-btn" onclick="openEditModal()">✏️ تعديل بيانات العنصر (إدمن)</button>
+            <div class="admin-controls-wrapper">
+              <button class="admin-btn admin-edit-btn" onclick="openEditModal()">✏️ تعديل البيانات</button>
+              <button class="admin-btn admin-delete-btn" onclick="deleteMediaItemFromGitHub()">🗑️ حذف العنصر نهائياً</button>
+            </div>
           </div>
         `;
       }
