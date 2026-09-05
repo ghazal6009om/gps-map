@@ -7,7 +7,7 @@
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="css/leaflet.css" />
-  <!-- مكتبة قراءة بيانات EXIF الجغرافية من الصور -->
+  <!-- مكتبة قراءة بيانات EXIF من الصور -->
   <script src="js/exif.js"></script>
 
   <style>
@@ -145,20 +145,20 @@
     .modal-footer { padding: 12px 16px; background: #0f172a; color: #cbd5e1; font-size: 13px; width: 100%; border-top: 1px solid #1e293b; }
     .modal-close { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: white; border: 1px solid rgba(255, 255, 255, 0.3); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; z-index: 100000; }
 
-    /* نافذة رفع ملف جديد (Upload Modal) */
-    .upload-modal-content {
+    /* نافذة الرفع والتعديل للإدمن */
+    .admin-modal-box {
       background: #0f172a;
       border: 1px solid #334155;
       padding: 20px;
       border-radius: 12px;
-      width: 360px;
+      width: 380px;
       max-width: 90vw;
       color: #fff;
     }
-    .upload-form-group { margin-bottom: 12px; }
-    .upload-form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
-    .upload-form-group input { width: 100%; padding: 8px 10px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 13px; }
-    .upload-btn-submit { width: 100%; padding: 10px; background: #0284c7; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 8px 10px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 13px; }
+    .btn-submit-action { width: 100%; padding: 10px; background: #0284c7; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; }
 
     /* العلامات المصغرة على الخريطة */
     .custom-photo-marker { position: relative; width: 44px; height: 44px; border-radius: 10px; border: 2px solid #ffffff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); background: #0f172a; overflow: hidden; cursor: pointer; }
@@ -221,41 +221,71 @@
     </div>
   </div>
 
-  <!-- نافذة رفع صور وفيديوهات جديدة للإدمن -->
-  <div id="upload-modal" class="modal-overlay" onclick="closeUploadModalOnBackdrop(event)">
-    <div class="upload-modal-content" onclick="event.stopPropagation()">
+  <!-- نافذة رفع وسائط جديدة -->
+  <div id="upload-modal" class="modal-overlay" onclick="closeModalByOverlay(event, 'upload-modal')">
+    <div class="admin-modal-box" onclick="event.stopPropagation()">
       <h3 style="margin-bottom: 12px; color: #38bdf8;">📤 رفع صورة / فيديو جديد</h3>
       
-      <div class="upload-form-group">
+      <div class="form-group">
         <label>اختر الملف (صورة أو فيديو):</label>
         <input type="file" id="upload-file-input" accept="image/*,video/*" onchange="handleFileSelect(event)">
-        <div id="gps-status-text" style="font-size: 11px; color: #38bdf8; margin-top: 4px;"></div>
+        <div id="gps-status-text" style="font-size: 11px; margin-top: 4px;"></div>
       </div>
 
-      <div class="upload-form-group">
+      <div class="form-group">
         <label>عنوان الوسائط:</label>
-        <input type="text" id="upload-title" placeholder="أدخل اسم الموقع أو الوسائط">
+        <input type="text" id="upload-title" placeholder="أدخل اسم المكان أو الوسائط">
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-        <div class="upload-form-group">
+        <div class="form-group">
           <label>خط العرض (Lat):</label>
-          <input type="number" step="any" id="upload-lat" placeholder="17.2268">
+          <input type="number" step="any" id="upload-lat" placeholder="تُعبأ تلقائياً عند قراءة الصورة">
         </div>
-        <div class="upload-form-group">
+        <div class="form-group">
           <label>خط الطول (Lng):</label>
-          <input type="number" step="any" id="upload-lng" placeholder="54.1604">
+          <input type="number" step="any" id="upload-lng" placeholder="تُعبأ تلقائياً عند قراءة الصورة">
         </div>
       </div>
 
-      <!-- أزرار تحديد الإحداثيات (يدوي / موقعك الحالي) -->
       <div style="display: flex; gap: 6px; margin-bottom: 12px;">
         <button type="button" onclick="enableMapPickLocation()" style="flex:1; padding: 6px; background: #334155; color: #38bdf8; border: 1px solid #0284c7; border-radius: 6px; font-size: 11px; cursor: pointer;">📍 تحديد يدوياً من الخريطة</button>
         <button type="button" onclick="useCurrentLocation()" style="flex:1; padding: 6px; background: #334155; color: #4ade80; border: 1px solid #16a34a; border-radius: 6px; font-size: 11px; cursor: pointer;">🧭 موقعي الحالي</button>
       </div>
 
-      <button type="button" class="upload-btn-submit" onclick="submitNewMedia()">إضافة الوسائط للخريطة 🚀</button>
-      <button type="button" style="width:100%; background:transparent; border:none; color:#94a3b8; margin-top:8px; cursor:pointer;" onclick="closeUploadModal()">إلغاء</button>
+      <button type="button" class="btn-submit-action" onclick="submitNewMedia()">إضافة الوسائط للخريطة 🚀</button>
+      <button type="button" style="width:100%; background:transparent; border:none; color:#94a3b8; margin-top:8px; cursor:pointer;" onclick="closeModalById('upload-modal')">إلغاء</button>
+    </div>
+  </div>
+
+  <!-- نافذة تعديل بيانات الصورة (المحافظة / المدينة / الحي / الشارع) -->
+  <div id="edit-modal" class="modal-overlay" onclick="closeModalByOverlay(event, 'edit-modal')">
+    <div class="admin-modal-box" onclick="event.stopPropagation()">
+      <h3 style="margin-bottom: 12px; color: #fbbf24;">✏️ تعديل تفاصيل الموقع والبيانات</h3>
+      
+      <div class="form-group">
+        <label>اسم المكان / العنوان:</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="form-group">
+        <label>المحافظة:</label>
+        <input type="text" id="edit-governorate">
+      </div>
+      <div class="form-group">
+        <label>المدينة / الولاية:</label>
+        <input type="text" id="edit-city">
+      </div>
+      <div class="form-group">
+        <label>المنطقة / الحي:</label>
+        <input type="text" id="edit-district">
+      </div>
+      <div class="form-group">
+        <label>الشارع / الطريق:</label>
+        <input type="text" id="edit-road">
+      </div>
+
+      <button type="button" class="btn-submit-action" style="background:#15803d;" onclick="saveMediaEdits()">حفظ التعديلات 💾</button>
+      <button type="button" style="width:100%; background:transparent; border:none; color:#94a3b8; margin-top:8px; cursor:pointer;" onclick="closeModalById('edit-modal')">إلغاء</button>
     </div>
   </div>
 
@@ -265,6 +295,7 @@
     let isAdminLoggedIn = false;
     let selectedFileUrl = '';
     let selectedFileType = 'image';
+    let currentEditingItem = null;
 
     function handleAdminLogin() {
       if (isAdminLoggedIn) {
@@ -290,7 +321,7 @@
         const lockBtn = document.getElementById('admin-lock-btn');
         lockBtn.classList.add('is-admin');
         lockBtn.innerHTML = '🔓 إدمن';
-        alert("تم تسجيل الدخول بنجاح! يمكن الآن إضافة ورفع الوسائط.");
+        alert("تم تسجيل الدخول بنجاح! يمكنك الآن الرفع والتعديل.");
       } else {
         alert("بيانات الدخول غير صحيحة!");
       }
@@ -298,18 +329,21 @@
 
     function openUploadModal() {
       if (!isAdminLoggedIn) return;
-      const center = map.getCenter();
-      document.getElementById('upload-lat').value = center.lat.toFixed(6);
-      document.getElementById('upload-lng').value = center.lng.toFixed(6);
+      document.getElementById('upload-lat').value = '';
+      document.getElementById('upload-lng').value = '';
+      document.getElementById('gps-status-text').innerText = '';
       document.getElementById('upload-modal').classList.add('active');
     }
 
-    function closeUploadModal() {
-      document.getElementById('upload-modal').classList.remove('active');
+    function closeModalById(id) {
+      document.getElementById(id).classList.remove('active');
     }
 
-    function closeUploadModalOnBackdrop(e) { closeUploadModal(); }
+    function closeModalByOverlay(e, id) {
+      closeModalById(id);
+    }
 
+    // قراءة إحداثيات الصورة تلقائياً عند الاختيار
     function handleFileSelect(e) {
       const file = e.target.files[0];
       const statusText = document.getElementById('gps-status-text');
@@ -323,8 +357,9 @@
         document.getElementById('upload-title').value = file.name;
       }
 
+      // قراءة بيانات GPS الخاصة بالصورة تلقائياً بدون تعبئة الموقع الحالي
       if (selectedFileType === 'image' && typeof EXIF !== 'undefined') {
-        statusText.innerText = "⏳ جاري قراءة إحداثيات الصورة تلقائياً...";
+        statusText.innerText = "⏳ جاري استخراج إحداثيات الصورة تلقائياً...";
         statusText.style.color = "#38bdf8";
         
         EXIF.getData(file, function() {
@@ -339,10 +374,10 @@
 
             document.getElementById('upload-lat').value = decLat.toFixed(6);
             document.getElementById('upload-lng').value = decLng.toFixed(6);
-            statusText.innerText = "✅ تم استخراج إحداثيات الصورة تلقائياً!";
+            statusText.innerText = "✅ تم العثور على إحداثيات الصورة الأصلية وتفعيلها تلقائياً!";
             statusText.style.color = "#4ade80";
           } else {
-            statusText.innerText = "⚠️ لم يتم العثور على إحداثيات مخزنة بالصورة. يمكنك التحديد يدوياً.";
+            statusText.innerText = "⚠️ الصورة لا تحوي إحداثيات مخزنة. اختر الموقع يدوياً أو استخدم موقعك الحالي.";
             statusText.style.color = "#fbbf24";
           }
         });
@@ -358,8 +393,8 @@
     }
 
     function enableMapPickLocation() {
-      closeUploadModal();
-      alert("قم بالنقر على المكان المحدد في الخريطة لتعبئة الإحداثيات تلقائياً.");
+      closeModalById('upload-modal');
+      alert("انقر على الموقع المحدد من الخريطة لاستخراج إحداثياته.");
       
       const onMapClick = function(e) {
         document.getElementById('upload-lat').value = e.latlng.lat.toFixed(6);
@@ -377,9 +412,9 @@
         navigator.geolocation.getCurrentPosition((position) => {
           document.getElementById('upload-lat').value = position.coords.latitude.toFixed(6);
           document.getElementById('upload-lng').value = position.coords.longitude.toFixed(6);
-          alert("تمت تعبئة الموقع الحالي بنجاح!");
+          alert("تم استيراد موقعك الحالي بنجاح!");
         }, () => {
-          alert("تعذر الوصول لموقعك الحالي. يرجى تفعيل الـ GPS في الجوال.");
+          alert("يرجى السماح بالوصول لموقع الجوال الـ GPS.");
         });
       }
     }
@@ -390,12 +425,12 @@
       const lng = parseFloat(document.getElementById('upload-lng').value);
 
       if (!selectedFileUrl) {
-        alert("يرجى اختيار ملف صورة أو فيديو أولاً!");
+        alert("يرجى تحديد ملف أولاً!");
         return;
       }
 
       if (isNaN(lat) || isNaN(lng)) {
-        alert("يرجى التأكد من إدخال الإحداثيات بشكل صحيح!");
+        alert("يرجى إدخال خط العرض والشرق بشكل صحيح!");
         return;
       }
 
@@ -411,9 +446,9 @@
       addSingleMarker(newItem);
       updateSidebarMedia();
       map.flyTo([lat, lng], 16);
-      closeUploadModal();
+      closeModalById('upload-modal');
 
-      alert("تمت إضافة الوسائط بنجاح للواجهة الحالية!");
+      alert("تم إدراج العنصر بنجاح على الخريطة!");
     }
 
     const map = L.map('map').setView([17.226842, 54.160492], 13);
@@ -594,6 +629,7 @@
     }
 
     async function openModal(item) {
+      currentEditingItem = item;
       const modal = document.getElementById('photo-modal');
       const mediaWrapper = document.getElementById('modal-media-wrapper');
       const modalFooter = document.getElementById('modal-footer');
@@ -628,29 +664,55 @@
       const geo = await fetchAddress(item.lat, item.lng);
 
       if (geo) {
+        item.governorate = item.governorate || geo.governorate;
+        item.city = item.city || geo.city;
+        item.district = item.district || geo.district;
+        item.road = item.road || geo.road;
+
         modalFooter.innerHTML = `
           <div style="text-align: right; line-height: 1.6; color: #f8fafc;">
             <div style="font-weight: bold; font-size: 14px; color: #38bdf8; margin-bottom: 4px; border-bottom: 1px solid #334155; padding-bottom: 4px;">
               📍 تفاصيل الموقع الجغرافي
             </div>
             <div style="font-size: 12px; color: #cbd5e1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-              <div>🏛️ <b>المحافظة:</b> ${geo.governorate}</div>
-              <div>🏙️ <b>المدينة:</b> ${geo.city}</div>
-              <div>🏡 <b>المنطقة/الحي:</b> ${geo.district}</div>
-              <div>🛣️ <b>الشارع:</b> ${geo.road}</div>
+              <div>🏛️ <b>المحافظة:</b> ${item.governorate}</div>
+              <div>🏙️ <b>المدينة:</b> ${item.city}</div>
+              <div>🏡 <b>المنطقة/الحي:</b> ${item.district}</div>
+              <div>🛣️ <b>الشارع:</b> ${item.road}</div>
             </div>
-            <button class="admin-edit-btn" onclick="editMediaItem('${item.name}')">✏️ تعديل بيانات العنصر (إدمن)</button>
+            <button class="admin-edit-btn" onclick="openEditModal()">✏️ تعديل بيانات العنصر (إدمن)</button>
           </div>
         `;
       }
     }
 
-    function editMediaItem(name) {
-      if (!isAdminLoggedIn) return;
-      const newTitle = prompt("أدخل اسمًا جديدًا لهذا العنصر:", name);
-      if (newTitle) {
-        alert(`تم تحديث اسم العنصر محليًا إلى: ${newTitle}`);
-      }
+    // فتح نافذة تعديل البيانات التفصيلية للإدمن
+    function openEditModal() {
+      if (!isAdminLoggedIn || !currentEditingItem) return;
+      
+      document.getElementById('edit-name').value = currentEditingItem.name || '';
+      document.getElementById('edit-governorate').value = currentEditingItem.governorate || '';
+      document.getElementById('edit-city').value = currentEditingItem.city || '';
+      document.getElementById('edit-district').value = currentEditingItem.district || '';
+      document.getElementById('edit-road').value = currentEditingItem.road || '';
+
+      document.getElementById('edit-modal').classList.add('active');
+    }
+
+    // حفظ التعديلات وتحديث الواجهة
+    function saveMediaEdits() {
+      if (!currentEditingItem) return;
+
+      currentEditingItem.name = document.getElementById('edit-name').value;
+      currentEditingItem.governorate = document.getElementById('edit-governorate').value;
+      currentEditingItem.city = document.getElementById('edit-city').value;
+      currentEditingItem.district = document.getElementById('edit-district').value;
+      currentEditingItem.road = document.getElementById('edit-road').value;
+
+      closeModalById('edit-modal');
+      openModal(currentEditingItem);
+      updateSidebarMedia();
+      alert("تمت تحديث كافة البيانات التفصيلية بنجاح!");
     }
 
     function closeModal() {
