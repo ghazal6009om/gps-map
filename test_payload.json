@@ -165,5 +165,12 @@
     "lat": 17.226693,
     "lng": 54.146805,
     "type": "image"
+  },
+  {
+    "name": "IMG_5084.jpeg",
+    "path": "uploads/1788572974057_IMG_5084.jpeg",
+    "lat": 17.179778,
+    "lng": 54.430889,
+    "type": "image"
   }
 ]
