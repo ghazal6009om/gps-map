@@ -431,8 +431,8 @@
       <div class="map-style-menu">
         <button class="btn-control" onclick="toggleMapDropdown(event)">🗺️ الخريطة</button>
         <div id="map-dropdown" class="map-dropdown">
-          <button id="btn-satellite" class="active" onclick="changeTileLayer('satellite')">🛰️ ساتلايت (Esri)</button>
-          <button id="btn-google" onclick="changeTileLayer('google')">🗺️ خرائط جوجل</button>
+          <button id="btn-satellite" class="active" onclick="changeTileLayer('satellite')">🌍 جوجل إيرث / ساتلايت</button>
+          <button id="btn-googleRoads" onclick="changeTileLayer('googleRoads')">🗺️ خرائط جوجل (شوارع)</button>
           <button id="btn-osm" onclick="changeTileLayer('osm')">🌐 OpenStreetMap</button>
         </div>
       </div>
@@ -467,14 +467,19 @@
     const map = L.map('map').setView([17.226842, 54.160492], 13);
 
     const tileLayers = {
-      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri'
+      // جوجل ساتلايت إيرث مع الأسماء والمعالم (Google Hybrid)
+      satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; Google Maps Earth'
       }),
-      google: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      // خرائط جوجل شوارع قياسية
+      googleRoads: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         maxZoom: 20,
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
         attribution: '&copy; Google Maps'
       }),
+      // خرائط الشوارع المفتوحة
       osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       })
